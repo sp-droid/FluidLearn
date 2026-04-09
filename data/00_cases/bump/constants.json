@@ -1,0 +1,7 @@
+{
+    "solver": "pimpleFOAM",
+	"Uc": 1,
+    "Lc": 0.0361,
+    "minRe": 250,
+    "maxRe": 2000
+}
