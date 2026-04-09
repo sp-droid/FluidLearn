@@ -1,0 +1,7 @@
+{
+    "solver": "analytical",
+    "Uc": 1.0,
+    "Lc": 6.283185307179586,
+    "minRe": 10,
+    "maxRe": 100
+}
