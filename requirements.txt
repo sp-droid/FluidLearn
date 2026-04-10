@@ -8,5 +8,6 @@ tqdm
 torchinfo
 pyvista
 h5py
+pandas
 numba
 scikit-learn
