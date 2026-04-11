@@ -58,37 +58,25 @@ def training():
 def visualization_raw():
     """Execute raw visualization from src/visualization.py"""
     print("\n📊 Executing raw visualization...")
-    try:
-        import sys
-        src_path = Path(__file__).parent
-        if str(src_path) not in sys.path:
-            sys.path.insert(0, str(src_path))
-        
-        try:
-            import visualization
-            print("✅ Raw visualization completed!\n")
-        except ModuleNotFoundError:
-            print("⚠️  src/visualization.py not found. Please create this module first.\n")
-    except Exception as e:
-        print(f"❌ Error during raw visualization: {str(e)}\n")
+    import sys
+    src_path = Path(__file__).parent
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    
+    import visualization
+    print("✅ Raw visualization completed!\n")
 
 
 def visualization_processed():
     """Execute processed visualization from src/visualize.py"""
     print("\n📈 Executing processed visualization...")
-    try:
-        import sys
-        src_path = Path(__file__).parent
-        if str(src_path) not in sys.path:
-            sys.path.insert(0, str(src_path))
-        
-        try:
-            import visualize
-            print("✅ Processed visualization completed!\n")
-        except ModuleNotFoundError:
-            print("⚠️  src/visualize.py not found.\n")
-    except Exception as e:
-        print(f"❌ Error during processed visualization: {str(e)}\n")
+    import sys
+    src_path = Path(__file__).parent
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    
+    import visualize
+    print("✅ Processed visualization completed!\n")
 
 
 def visualization_submenu():
@@ -134,12 +122,6 @@ def main_menu():
             print("\n👋 Thank you for using FluidLearn!\n")
             break
 
-
-def cli():
-    """Entry point for the CLI."""
+if __name__ == "__main__":
     print_banner()
     main_menu()
-
-
-if __name__ == "__main__":
-    cli()
