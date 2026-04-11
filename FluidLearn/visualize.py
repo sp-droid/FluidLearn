@@ -529,7 +529,7 @@ gui = ImguiEdgeWindow(
     size=275,  # width or height of the GUI window within the figure
     location="right",  # the edge to place this window at
     title="CFD Visualization",  # window title
-    data_location=Path.cwd().parents[1] / r"openfoam2512/results"
+    data_location=Path(r"data/01_raw")
 )
 figure.add_gui(gui)
 

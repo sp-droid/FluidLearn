@@ -7,22 +7,11 @@ Uses InquirerPy for beautiful, interactive menu navigation.
 from pathlib import Path
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
-import re
-
 
 def get_version():
-    """Extract version from pyproject.toml"""
-    try:
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
-        with open(pyproject_path) as file:
-            content = file.read()
-        match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
-        if match:
-            return match.group(1)
-    except Exception:
-        pass
-    return "0.1.0"
-
+    """Extract version from main package"""
+    from . import __version__
+    return __version__
 
 def print_banner():
     """Print fancy ASCII banner with version"""
@@ -100,6 +89,8 @@ def visualization_submenu():
 
 
 def main_menu():
+    print_banner()
+
     """Main menu loop."""
     while True:
         choice = inquirer.select(
@@ -121,7 +112,3 @@ def main_menu():
         elif choice == "exit":
             print("\n👋 Thank you for using FluidLearn!\n")
             break
-
-if __name__ == "__main__":
-    print_banner()
-    main_menu()
