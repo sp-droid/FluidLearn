@@ -187,7 +187,8 @@ class ImguiEdgeWindow(EdgeWindow):
         self._N_colors = 300
         self._define_cmap()
 
-        self._available_flowfields = ["p", "Ux", "Uy", "|U|", "vorticity"]
+        self._available_flowfields = ["Kinematic pressure", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
+        self._flowfield_units = ["m^2/s^2", "m/s", "m/s", "m/s", "1/s"]
         self._flowfield_index = 3
 
         self._colorbar_size = (250, 20)  # width, height of colorbar
@@ -200,7 +201,7 @@ class ImguiEdgeWindow(EdgeWindow):
         self._last_frame_time = 0.0
 
         self._is_highlighting = False
-        self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0])
+        self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 
         self._load_dataset()
 
@@ -262,6 +263,7 @@ class ImguiEdgeWindow(EdgeWindow):
         self._cell_kdtree = cKDTree(self._mesh_centers[:, :2])
         self._highlighted_cell = -1
         self._highlighted_cell_original_color = None
+        self._highlighted_flowvalue = 0.0
         
         self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
 
@@ -273,8 +275,9 @@ class ImguiEdgeWindow(EdgeWindow):
 
         if data_pos is not None:
             x, y, _ = data_pos
-            print(f"x={x:.3f}, y={y:.3f}")
+            # print(f"x={x:.3f}, y={y:.3f}")
 
+            # Get closest cell to pointer position using prebuilt cKDTree
             _, cell_index = self._cell_kdtree.query([x, y])
             if self._highlighted_cell != -1:
                 self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
@@ -283,6 +286,7 @@ class ImguiEdgeWindow(EdgeWindow):
             self._highlighted_cell_original_color = self._mesh.colors[cell_index].copy()
 
             self._mesh.colors[cell_index] = self._highlight_color
+            self._highlighted_flowvalue = self._data_array[self._snapshot, cell_index]
 
     def _load_case(self): # Flowfield and case specific data
         chosen_case = self._cases[self._case]
@@ -294,15 +298,15 @@ class ImguiEdgeWindow(EdgeWindow):
             self._data["t"] = file['t'][:].astype(np.float32)
             self._N_snapshots = self._data["t"].shape[0]
             match flowfield:
-                case "p":
+                case "Kinematic pressure":
                     self._data_array = file['p'][:, :].astype(np.float32)
-                case "Ux":
+                case "Horizontal velocity":
                     self._data_array = file['U'][:, :, 0].astype(np.float32)
-                case "Uy":
+                case "Vertical velocity":
                     self._data_array = file['U'][:, :, 1].astype(np.float32)
-                case "|U|":
+                case "Velocity magnitude":
                     self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
-                case "vorticity":
+                case "Vorticity":
                     self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                     for snap in range(self._N_snapshots):
                         U_gradY = compute_gradients(file['U'][snap, :, 0], self._gradY_lsq_weights, self._cell_neighbors, self._cell_neighbors_mask)
@@ -451,7 +455,7 @@ class ImguiEdgeWindow(EdgeWindow):
 
         #### Dropdown for variable selection
         changed_flowfield, self._flowfield_index = imgui.combo(
-            "Fluid Field",
+            "Flowfield",
             self._flowfield_index,
             self._available_flowfields
         )
@@ -531,7 +535,8 @@ class ImguiEdgeWindow(EdgeWindow):
         imgui.text(f"Kinematic viscosity: {self._data['nu']:.2e} m^2/s")
         # test
         imgui.separator()
-        imgui.text("Highlighted cell:")
+        imgui.text(f"Highlighted cell:\n\t- ID: {self._highlighted_cell}\n\t- Flowfield value: {self._highlighted_flowvalue:.3f} {self._flowfield_units[self._flowfield_index]}")
+        imgui.separator()
 
 gui = ImguiEdgeWindow(
     figure,  # the figure this GUI instance should live inside
