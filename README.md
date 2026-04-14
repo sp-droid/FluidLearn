@@ -40,8 +40,8 @@ Interactive command-line interface for FluidLearn workflows using **InquirerPy**
   ├── Data Processing (placeholder - coming soon)
   ├── Training (placeholder - coming soon)
   ├── Visualization
-  │   ├── Raw → Executes src/visualization.py
-  │   └── Processed → Executes src/visualize.py
+  │   ├── Raw → Executes FluidLearn/visualization.py
+  │   └── Processed → Executes FluidLearn/visualize.py
   └── Exit
 `
 
@@ -55,9 +55,9 @@ Interactive command-line interface for FluidLearn workflows using **InquirerPy**
 
 ### Module Structure
 
-- src/cli.py - Main CLI module with InquirerPy-driven menus
-- src/visualization.py - Raw visualization (stub, ready for customization)
-- src/visualize.py - Processed visualization (advanced 3D visualization)
+- FluidLearn/cli.py - Main CLI module with InquirerPy-driven menus
+- FluidLearn/visualization.py - Raw visualization (stub, ready for customization)
+- FluidLearn/visualize.py - Processed visualization (advanced 3D visualization)
 
 ### Usage Examples
 
@@ -81,20 +81,21 @@ Interactive command-line interface for FluidLearn workflows using **InquirerPy**
 
 `
 FluidLearn/
-├── src/                    # Source code
-│   ├── cli.py             # Main CLI module with InquirerPy
-│   ├── visualization.py    # Raw visualization stub
-│   └── visualize.py        # Processed visualization
-├── data/                   # Data directory
-│   ├── 00_cases/          # User-driven OpenFOAM case execution
-│   ├── 01_raw/            # Framework-processed datasets
-├── models/                # Trained models
-├── notebooks/             # Jupyter notebooks
-├── tests/                 # Test suite
-├── pyproject.toml         # Project metadata
-├── requirements.txt       # Project dependencies
-├── init.py                # CLI entry point
-└── README.md              # This file
+├── FluidLearn/                 # Package code
+│   ├── __init__.py            # Package entry point
+│   ├── cli.py                 # Main CLI module with InquirerPy
+│   ├── visualization.py        # Raw visualization stub
+│   └── visualize.py            # Processed visualization (advanced 3D)
+├── data/                       # Data directory
+│   ├── 00_cases/              # User-driven OpenFOAM case execution
+│   ├── 01_raw/                # Framework-processed datasets
+├── models/                     # Trained models
+├── notebooks/                  # Jupyter notebooks
+├── tests/                      # Test suite
+├── init.py                     # CLI entry point
+├── pyproject.toml              # Project metadata
+├── requirements.txt            # Project dependencies
+└── README.md                   # This file
 `
 
 ## Data Format
