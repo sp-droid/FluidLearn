@@ -7,7 +7,7 @@ import h5py
 import numpy as np
 from numba import jit
 from scipy import io
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, cKDTree
 import matplotlib.pyplot as plt
 
 # Special
@@ -199,6 +199,9 @@ class ImguiEdgeWindow(EdgeWindow):
         self._frame_time = 1.0 / self._play_fps
         self._last_frame_time = 0.0
 
+        self._is_highlighting = False
+        self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0])
+
         self._load_dataset()
 
     def _load_dataset(self):
@@ -256,17 +259,30 @@ class ImguiEdgeWindow(EdgeWindow):
         self._figure[0,0].camera.show_object(self._mesh.world_object)
         self._figure[0,0].camera.zoom = 1.2
 
-        # def on_pointer_move(event):
-        #     # event.position is in WORLD coordinates
-        #     data_pos = figure[0, 0].map_screen_to_world(event)
+        self._cell_kdtree = cKDTree(self._mesh_centers[:, :2])
+        self._highlighted_cell = -1
+        self._highlighted_cell_original_color = None
+        
+        self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
 
-        #     if data_pos is not None:
-        #         x, y, _ = data_pos
-        #         print(f"x={x:.3f}, y={y:.3f}")
-            
-        # self._mesh.add_event_handler(on_pointer_move, "pointer_move")
-        # self._mesh.remove_event_handler(on_pointer_move, "pointer_move")
         self._load_case()
+
+    def on_pointer_move(self, event):
+        # event.position is in WORLD coordinates
+        data_pos = self._figure[0,0].map_screen_to_world(event)
+
+        if data_pos is not None:
+            x, y, _ = data_pos
+            print(f"x={x:.3f}, y={y:.3f}")
+
+            _, cell_index = self._cell_kdtree.query([x, y])
+            if self._highlighted_cell != -1:
+                self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
+            
+            self._highlighted_cell = cell_index
+            self._highlighted_cell_original_color = self._mesh.colors[cell_index].copy()
+
+            self._mesh.colors[cell_index] = self._highlight_color
 
     def _load_case(self): # Flowfield and case specific data
         chosen_case = self._cases[self._case]
@@ -515,14 +531,7 @@ class ImguiEdgeWindow(EdgeWindow):
         imgui.text(f"Kinematic viscosity: {self._data['nu']:.2e} m^2/s")
         # test
         imgui.separator()
-        if imgui.button("Test button"):
-            # if self._scatter is not None: self._figure[0, 0].remove_graphic(self._mesh)
-            # self._scatter = self._figure[0, 0].add_scatter(6.28*np.random.rand(20,2), colors="white", edge_colors=None, sizes=10)
-
-            # io = imgui.get_io()
-            pass
-
-
+        imgui.text("Highlighted cell:")
 
 gui = ImguiEdgeWindow(
     figure,  # the figure this GUI instance should live inside
