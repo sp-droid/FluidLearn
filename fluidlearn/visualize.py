@@ -18,7 +18,7 @@ from imgui_bundle import imgui
 # Local imports
 import fluidlearn as fl
 
-class ImguiEdgeWindow(EdgeWindow):
+class CFDvisualizer(EdgeWindow):
     def __init__(self, figure, size, location, title, data_location=Path.cwd()):
         super().__init__(figure=figure, size=size, location=location, title=title, data_location=data_location)
         # this UI will modify the line
@@ -53,7 +53,19 @@ class ImguiEdgeWindow(EdgeWindow):
 
         self._is_highlighting = False
 
+        self._pipeline_update_dataset()
+
+    def _pipeline_update_dataset(self):
         self._load_dataset()
+        self._pipeline_update_mesh()
+
+    def _pipeline_update_mesh(self):
+        self._load_mesh()
+        self._pipeline_update_case()
+
+    def _pipeline_update_case(self):
+        self._load_case()
+        self._load_snapshot()
 
     def _load_dataset(self):
         self._dataset_path = self._data_location / self._available_datasets[self._dataset_index]
@@ -63,8 +75,6 @@ class ImguiEdgeWindow(EdgeWindow):
 
         with open(self._dataset_path / "constants.json", "r") as file:
             self._constants = json.load(file)
-
-        self._load_mesh()
 
     def _load_mesh(self):
         with h5py.File(self._dataset_path / "mesh.h5", "r") as file:
@@ -121,9 +131,7 @@ class ImguiEdgeWindow(EdgeWindow):
         self._cell_kdtree = cKDTree(self._mesh_centers[:, :2])
         self._highlighter = fl.vis.MeshHighlighter2D(self)
         self._mesh.add_event_handler(self._highlighter.on_pointer_move, "pointer_move")
-        self._mesh.add_event_handler(self._highlighter.on_pointer_leave, "pointer_leave")
-
-        self._load_case()        
+        self._mesh.add_event_handler(self._highlighter.on_pointer_leave, "pointer_leave")        
 
     def _load_case(self): # Flowfield and case specific data
         chosen_case = self._cases[self._case]
@@ -152,9 +160,8 @@ class ImguiEdgeWindow(EdgeWindow):
     
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._data["nu"] 
         self._update_cmap_range()
-        self._update_mesh_snapshot()
 
-    def _update_mesh_snapshot(self):
+    def _load_snapshot(self):
         data_array = self._data_array[self._snapshot]
         data_array = np.clip(data_array, self._clip_min, self._clip_max)
 
@@ -166,7 +173,7 @@ class ImguiEdgeWindow(EdgeWindow):
             self._mesh.colors = self._cmap_lut[normalized]
         self._t = self._data["t"][self._snapshot]
 
-    def _precompute_fast_update_mesh_snapshot(self):
+    def _precompute_fast_load_snapshot(self):
         if self._cmap == "random": return
         self._fullcase = np.empty((self._N_snapshots, self._N_cells, 4), dtype=np.float32)
         for j in range(self._N_snapshots):
@@ -176,7 +183,7 @@ class ImguiEdgeWindow(EdgeWindow):
             normalized = ((data_array - self._clip_min) / (self._clip_max - self._clip_min) * (self._N_colors-1)).astype(np.uint32)
             self._fullcase[j] = self._cmap_lut[normalized]
 
-    def _fast_update_mesh_snapshot(self):
+    def _fast_load_snapshot(self):
         if self._cmap == "random": return
         self._mesh.colors = self._fullcase[self._snapshot]
         self._t = self._data["t"][self._snapshot]
@@ -227,7 +234,7 @@ class ImguiEdgeWindow(EdgeWindow):
         if changed_dataset:
             self._case = 0
             self._snapshot = 0
-            self._load_dataset()
+            self._pipeline_update_dataset()
         for key, value in self._constants.items():
             imgui.text(f"{key}: {value}")
         imgui.separator()
@@ -237,7 +244,7 @@ class ImguiEdgeWindow(EdgeWindow):
         imgui.text(f"Vertices: {self._N_vertices}")
         if imgui.button("Mesh Mode: Vertex Interpolation" if self._use_vertex_interpolation else "Mode: Face Constant"):
             self._use_vertex_interpolation = not self._use_vertex_interpolation
-            self._load_mesh()
+            self._pipeline_update_mesh()
         imgui.separator()
         #### Dropdown for cmap selection
         changed_cmap, self._cmap_index = imgui.combo(
@@ -248,17 +255,17 @@ class ImguiEdgeWindow(EdgeWindow):
         if changed_cmap:
             self._define_cmap()
             self._prebuild_colorbar_texture()
-            self._update_mesh_snapshot()
+            self._load_snapshot()
         #### Constant colormap across a case or a single snapshot
         if imgui.button("Colormap Mode: Per Case" if self._use_percase_cmap else "Colormap Mode: Per Snapshot"):
             self._use_percase_cmap = not self._use_percase_cmap
-            self._load_mesh()
+            self._pipeline_update_mesh()
         imgui.same_line()
         #### Logarithmic or linear colormap scale
         if imgui.button("Log. scale" if self._cmap_logscale else "Linear scale"):
             self._cmap_logscale = not self._cmap_logscale
             self._define_cmap()
-            self._update_mesh_snapshot()
+            self._load_snapshot()
         #### Colormap bar with min/max values
         imgui.text("Data Range")
         
@@ -297,7 +304,7 @@ class ImguiEdgeWindow(EdgeWindow):
             self._available_flowfields
         )
         if changed_flowfield:
-            self._load_case()
+            self._pipeline_update_case()
 
         #### Min-max clipping slider for data
         imgui.text("Clipping Range")
@@ -319,7 +326,7 @@ class ImguiEdgeWindow(EdgeWindow):
             "Max: %.2f"
         )
         if changed_min or changed_max:
-            self._update_mesh_snapshot()
+            self._load_snapshot()
 
         #### Snapshot slider
         imgui.separator()
@@ -332,7 +339,7 @@ class ImguiEdgeWindow(EdgeWindow):
         )
         if changed_snapshot:
             if not self._use_percase_cmap: self._update_cmap_range() # Update colormap range if in per-snapshot mode
-            self._update_mesh_snapshot()
+            self._load_snapshot()
 
         #### Play controls
         imgui.text("Playback")
@@ -341,7 +348,7 @@ class ImguiEdgeWindow(EdgeWindow):
             if not self._use_percase_cmap:
                 self._use_percase_cmap = True # Playback only makes sense if the colormap is consistent across snapshots
                 self._update_cmap_range()
-            self._precompute_fast_update_mesh_snapshot()
+            self._precompute_fast_load_snapshot()
         
         imgui.same_line()
         _, self._play_fps = imgui.slider_int("FPS##play_fps", self._play_fps, 1, 60)
@@ -352,13 +359,13 @@ class ImguiEdgeWindow(EdgeWindow):
             current_time = time()
             if current_time - self._last_frame_time >= self._frame_time:
                 self._snapshot = (self._snapshot + 1) % self._N_snapshots
-                self._fast_update_mesh_snapshot()
+                self._fast_load_snapshot()
                 self._last_frame_time = current_time
 
         #### Chosen case info and selection
         imgui.separator()
         if imgui.button("Load case"):
-            self._load_case()
+            self._pipeline_update_case()
         imgui.same_line()
         # imgui.set_next_item_width(150)
         _, self._case = imgui.slider_int(
@@ -381,7 +388,7 @@ class ImguiEdgeWindow(EdgeWindow):
 figure = fpl.Figure(size=(1920, 1080))
 figure.canvas.set_title("CFD Visualization")
 
-gui = ImguiEdgeWindow(
+gui = CFDvisualizer(
     figure,  # the figure this GUI instance should live inside
     size=275,  # width or height of the GUI window within the figure
     location="right",  # the edge to place this window at
