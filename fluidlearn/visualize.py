@@ -52,7 +52,6 @@ class ImguiEdgeWindow(EdgeWindow):
         self._last_frame_time = 0.0
 
         self._is_highlighting = False
-        self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 
         self._load_dataset()
 
@@ -118,56 +117,13 @@ class ImguiEdgeWindow(EdgeWindow):
         self._figure[0,0].camera.show_object(self._mesh.world_object)
         self._figure[0,0].camera.zoom = 1.2
 
+        # KD tree for fast nearest cell lookup during highlighting
         self._cell_kdtree = cKDTree(self._mesh_centers[:, :2])
-        self._highlighted_cell = -1
-        self._highlighted_cell_original_color = None
-        self._highlighted_flowvalue = 0.0
-        
-        self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
-        self._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
+        self._highlighter = fl.vis.MeshHighlighter2D(self)
+        self._mesh.add_event_handler(self._highlighter.on_pointer_move, "pointer_move")
+        self._mesh.add_event_handler(self._highlighter.on_pointer_leave, "pointer_leave")
 
-        self._load_case()
-
-    def on_pointer_leave(self, event):
-        if self._highlighted_cell != -1:
-            self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
-            for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
-                if self._cell_neighbors_mask[self._highlighted_cell, i]:
-                    self._mesh.colors[neighbor][3] = 1.0
-            self._mesh.colors.buffer.update_full()
-            self._highlighted_cell = -1
-            self._highlighted_flowvalue = 0.0
-
-    def on_pointer_move(self, event):
-        # event.position is in WORLD coordinates
-        data_pos = self._figure[0,0].map_screen_to_world(event)
-
-        if data_pos is not None:
-            x, y, _ = data_pos
-            # print(f"x={x:.3f}, y={y:.3f}")
-
-            # Get closest cell to pointer position using prebuilt cKDTree
-            _, cell_index = self._cell_kdtree.query([x, y])
-            
-            # Restore
-            if self._highlighted_cell != -1:
-                self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
-                for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
-                    if self._cell_neighbors_mask[self._highlighted_cell, i]:
-                        self._mesh.colors[neighbor][3] = 1.0
-
-            # Mark
-            self._highlighted_cell_original_color = self._mesh.colors[cell_index].copy()
-            for i, neighbor in enumerate(self._cell_neighbors[cell_index]):
-                if self._cell_neighbors_mask[cell_index, i]:
-                    self._mesh.colors[neighbor][3] = 0.1
-
-            self._mesh.colors[cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._data_array[self._snapshot, cell_index]
-
-            self._mesh.colors.buffer.update_full()
-            self._highlighted_cell = cell_index
-        
+        self._load_case()        
 
     def _load_case(self): # Flowfield and case specific data
         chosen_case = self._cases[self._case]
@@ -416,7 +372,9 @@ class ImguiEdgeWindow(EdgeWindow):
         imgui.text(f"Kinematic viscosity: {self._data['nu']:.2e} m^2/s")
         # test
         imgui.separator()
-        imgui.text(f"Highlighted cell:\n\t- ID: {self._highlighted_cell}\n\t- Flowfield value: {self._highlighted_flowvalue:.3f} {self._flowfield_units[self._flowfield_index]}")
+        imgui.text(f"Highlighted cell:")
+        imgui.text(f"\t- ID: {self._highlighter.cell}")
+        imgui.text(f"\t- Flowfield value: {self._highlighter.flowvalue:.3f} {self._flowfield_units[self._flowfield_index]}")
         imgui.separator()
 
 # Plotting

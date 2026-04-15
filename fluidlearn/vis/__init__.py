@@ -1,0 +1,1 @@
+from fluidlearn.vis.mesh_highlighter import MeshHighlighter2D
