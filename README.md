@@ -17,6 +17,13 @@ Advanced deep learning framework for computational fluid dynamics (CFD) data pro
     pip install -r requirements.txt
     `
 
+### Alternative install in development mode
+This links the installation to the source code instead of creating a copy
+From the repo root:
+    `bash
+    pip install -e .
+    `
+
 ### Running the CLI
 
 Once you have set up your environment and installed dependencies:

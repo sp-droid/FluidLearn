@@ -6,10 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "fluidlearn"
 version = "0.1.0"
 description = "Advanced deep learning framework for CFD data processing, training, and visualization"
-authors = [{name = "FluidLearn Team"}]
+authors = [{name = "sp-droid"}]
 readme = "README.md"
 requires-python = ">=3.8"
 
 [tool.setuptools]
-packages = ["FluidLearn"]
+packages = ["fluidlearn"]
 
