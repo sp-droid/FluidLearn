@@ -15,10 +15,6 @@ import fastplotlib as fpl
 from fastplotlib.ui import EdgeWindow
 from imgui_bundle import imgui
 
-# Plotting
-figure = fpl.Figure(size=(1920, 1080))
-figure.canvas.set_title("CFD Visualization")
-
 @jit
 def compute_most_repeated(
         arr: np.ndarray
@@ -538,6 +534,10 @@ class ImguiEdgeWindow(EdgeWindow):
         imgui.text(f"Highlighted cell:\n\t- ID: {self._highlighted_cell}\n\t- Flowfield value: {self._highlighted_flowvalue:.3f} {self._flowfield_units[self._flowfield_index]}")
         imgui.separator()
 
+# Plotting
+figure = fpl.Figure(size=(1920, 1080))
+figure.canvas.set_title("CFD Visualization")
+
 gui = ImguiEdgeWindow(
     figure,  # the figure this GUI instance should live inside
     size=275,  # width or height of the GUI window within the figure
@@ -550,7 +550,5 @@ figure.add_gui(gui)
 figure.show()
 figure.imgui_show_fps = True
 
-# NOTE: fpl.loop.run() should not be used for interactive sessions
-# See the "JupyterLab and IPython" section in the user guide
 if __name__ == "__main__":
     fpl.loop.run()
