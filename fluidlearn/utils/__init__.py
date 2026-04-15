@@ -1,3 +1,3 @@
-from fluidlearn.utils.misc import srgb_to_linear
 from fluidlearn.utils.gradient import unstructured_gradient, unstructured_gradient_weights
+from fluidlearn.utils.misc import srgb_to_linear
 from fluidlearn.utils.topology import cells_per_vertex, neighbors_per_cell, unstructured_lsq_weights
