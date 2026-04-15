@@ -3,3 +3,4 @@
 *.pyspy
 *.pyc
 .vscode
+fluidlearn.egg-info
