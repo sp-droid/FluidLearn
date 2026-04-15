@@ -16,127 +16,7 @@ from fastplotlib.ui import EdgeWindow
 from imgui_bundle import imgui
 
 # Local imports
-from FluidLearn.utils.misc import compute_most_repeated
-
-def compute_cells_per_vertex(
-        mesh_indices: np.ndarray,
-        N_vertices: int
-    ) -> tuple:
-    """To which cells belongs each vertex
-
-    Args:
-        mesh_indices (np.ndarray): Array giving which vertices belong to each cell
-        N_vertices (int): Total number of vertices
-
-    Returns:
-        np.ndarray: Array of which cells belongs to each vertex
-        np.ndarray: Mask indicating valid connections
-    """
-    N_cells = mesh_indices.shape[0]
-    _, max_connections = compute_most_repeated(mesh_indices.flatten())
-
-    vertex_connections = np.empty((N_vertices,max_connections), dtype=int)
-    vertex_connections_mask = np.zeros((N_vertices,max_connections), dtype=bool)
-
-    for cell in range(N_cells):
-        for vertex in mesh_indices[cell]:
-            for i in range(max_connections):
-                if not vertex_connections_mask[vertex, i]:
-                    vertex_connections[vertex, i] = cell
-                    vertex_connections_mask[vertex, i] = True
-                    break
-
-    return vertex_connections, vertex_connections_mask
-
-def compute_cell_neighbors(
-        mesh_indices: np.ndarray,
-        vertex_connections: list,
-        vertex_connections_mask: np.ndarray
-    ) -> tuple:
-    """Which cells are neighbors of each cell
-
-    Args:
-        mesh_indices (np.ndarray): Array giving which vertices belong to each cell
-        vertex_connections (list): List of which cells belongs to each vertex
-        vertex_connections_mask (np.ndarray): Mask indicating valid connections
-
-    Returns:
-        np.ndarray: Array of which cells are neighbors of each cell
-        np.ndarray: Mask indicating valid neighbors
-    """
-    N_cells = mesh_indices.shape[0]
-    # Assuming a valid manifold mesh, the maximum number of neighboring faces is the number of vertices, because in this mesh an edge may only be shared by <=2 faces
-    max_neighbors = mesh_indices.shape[1]
-
-    cell_neighbors = np.empty((N_cells,max_neighbors), dtype=int)
-    cell_neighbors_mask = np.zeros((N_cells,max_neighbors), dtype=bool)
-    for cell in range(N_cells):
-        for i in mesh_indices[cell]:
-            vertex_con = vertex_connections[i]
-            vertex_con = vertex_con[vertex_connections_mask[i]]
-            if len(vertex_con)==0: continue
-            vertex_con = vertex_con[vertex_con!=cell]
-            if len(vertex_con)==0: continue
-            for candidate_cell in vertex_con:
-                if len(set(mesh_indices[cell]) & set(mesh_indices[candidate_cell])) > 1:
-                    if candidate_cell not in cell_neighbors[cell]:
-                        cell_neighbors[cell,np.where(cell_neighbors_mask[cell]==False)[0][0]] = candidate_cell
-                        cell_neighbors_mask[cell,np.where(cell_neighbors_mask[cell]==False)[0][0]] = True
-                        cell_neighbors[candidate_cell,np.where(cell_neighbors_mask[candidate_cell]==False)[0][0]] = cell
-                        cell_neighbors_mask[candidate_cell,np.where(cell_neighbors_mask[candidate_cell]==False)[0][0]] = True
-        
-    return cell_neighbors, cell_neighbors_mask
-
-def compute_gradient_weights(
-        mesh_centers: np.ndarray,
-        cell_neighbors: np.ndarray,
-        cell_neighbors_mask: np.ndarray
-    ) -> tuple:
-    """Precompute least squares weights for gradient computation
-
-    Args:
-        mesh_centers (np.ndarray): Array of cell centroids
-        cell_neighbors (np.ndarray): Array of which cells are neighbors of each cell
-        cell_neighbors_mask (np.ndarray): Mask indicating valid neighbors
-
-    Returns:
-        np.ndarray: Precomputed weights for x-gradient
-        np.ndarray: Precomputed weights for y-gradient
-    """
-    N_cells = mesh_centers.shape[0]
-    max_neighbors = cell_neighbors.shape[1]
-
-    gradX_lsq_weights = np.empty((N_cells,max_neighbors), dtype=np.float32)
-    gradY_lsq_weights = np.empty((N_cells,max_neighbors), dtype=np.float32)
-    for cell in range(N_cells):
-        neighbors = cell_neighbors_mask[cell]
-
-        A = (mesh_centers[cell_neighbors[cell, neighbors]]-mesh_centers[cell])
-        A = np.linalg.inv((A.T @ A) + 1e-8*np.eye(A.shape[1])) @ A.T
-        
-        gradX_lsq_weights[cell, neighbors] = A[0]
-        gradY_lsq_weights[cell, neighbors] = A[1]
-
-    return gradX_lsq_weights, gradY_lsq_weights
-
-@jit
-def compute_gradients(field, precomputed_weight, cell_neighbors, cell_neighbors_mask):
-    N_cells = cell_neighbors.shape[0]
-    field_grad = np.zeros(N_cells, dtype=np.float32)
-    
-    for cell in range(N_cells):
-        for i, neighbor in enumerate(cell_neighbors[cell]):
-            if cell_neighbors_mask[cell, i]:
-                field_grad[cell] += precomputed_weight[cell, i] * (field[neighbor] - field[cell])
-    return field_grad
-
-def srgb_to_linear(rgb):
-    rgb = np.asarray(rgb, dtype=np.float32)
-    return np.where(
-        rgb <= 0.04045,
-        rgb / 12.92,
-        ((rgb + 0.055) / 1.055) ** 2.4
-    )
+import fluidlearn as fl
 
 class ImguiEdgeWindow(EdgeWindow):
     def __init__(self, figure, size, location, title, data_location=Path.cwd()):
@@ -197,11 +77,18 @@ class ImguiEdgeWindow(EdgeWindow):
         self._N_vertices = len(self._mesh_vertices)
 
         # Find cells connected to each vertex
-        vertex_connections, vertex_connections_mask = compute_cells_per_vertex(self._mesh_indices, self._N_vertices)
+        vertex_connections, vertex_connections_mask = fl.utils.cells_per_vertex(self._mesh_indices, self._N_vertices)
         # Find neighboring cells for each cell
-        self._cell_neighbors, self._cell_neighbors_mask = compute_cell_neighbors(self._mesh_indices, vertex_connections, vertex_connections_mask)
+        self._cell_neighbors, self._cell_neighbors_mask = fl.utils.neighbors_per_cell(self._mesh_indices, vertex_connections, vertex_connections_mask)
         # Precompute least squares weights for gradient computation
-        self._gradX_lsq_weights, self._gradY_lsq_weights = compute_gradient_weights(self._mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
+        self._lsq_weights = fl.utils.unstructured_lsq_weights(self._mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
+        # Gradient function
+        self._gradient = lambda field: fl.utils.unstructured_gradient(
+            field, 
+            precomputed_weights=self._lsq_weights, 
+            cell_neighbors=self._cell_neighbors, 
+            cell_neighbors_mask=self._cell_neighbors_mask
+        )
         
         # Random colors for visualizing each cell
         self._random_colors = np.random.rand(self._N_cells, 4).astype(np.float32)
@@ -237,8 +124,19 @@ class ImguiEdgeWindow(EdgeWindow):
         self._highlighted_flowvalue = 0.0
         
         self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
+        self._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
 
         self._load_case()
+
+    def on_pointer_leave(self, event):
+        if self._highlighted_cell != -1:
+            self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
+            for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
+                if self._cell_neighbors_mask[self._highlighted_cell, i]:
+                    self._mesh.colors[neighbor][3] = 1.0
+            self._mesh.colors.buffer.update_full()
+            self._highlighted_cell = -1
+            self._highlighted_flowvalue = 0.0
 
     def on_pointer_move(self, event):
         # event.position is in WORLD coordinates
@@ -250,14 +148,26 @@ class ImguiEdgeWindow(EdgeWindow):
 
             # Get closest cell to pointer position using prebuilt cKDTree
             _, cell_index = self._cell_kdtree.query([x, y])
+            
+            # Restore
             if self._highlighted_cell != -1:
                 self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
-            
-            self._highlighted_cell = cell_index
+                for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
+                    if self._cell_neighbors_mask[self._highlighted_cell, i]:
+                        self._mesh.colors[neighbor][3] = 1.0
+
+            # Mark
             self._highlighted_cell_original_color = self._mesh.colors[cell_index].copy()
+            for i, neighbor in enumerate(self._cell_neighbors[cell_index]):
+                if self._cell_neighbors_mask[cell_index, i]:
+                    self._mesh.colors[neighbor][3] = 0.1
 
             self._mesh.colors[cell_index] = self._highlight_color
             self._highlighted_flowvalue = self._data_array[self._snapshot, cell_index]
+
+            self._mesh.colors.buffer.update_full()
+            self._highlighted_cell = cell_index
+        
 
     def _load_case(self): # Flowfield and case specific data
         chosen_case = self._cases[self._case]
@@ -280,9 +190,9 @@ class ImguiEdgeWindow(EdgeWindow):
                 case "Vorticity":
                     self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                     for snap in range(self._N_snapshots):
-                        U_gradY = compute_gradients(file['U'][snap, :, 0], self._gradY_lsq_weights, self._cell_neighbors, self._cell_neighbors_mask)
-                        V_gradX = compute_gradients(file['U'][snap, :, 1], self._gradX_lsq_weights, self._cell_neighbors, self._cell_neighbors_mask)
-                        self._data_array[snap] = V_gradX - U_gradY
+                        U_grad = self._gradient(file['U'][snap, :, 0])
+                        V_grad = self._gradient(file['U'][snap, :, 1])
+                        self._data_array[snap] = V_grad[0] - U_grad[1]
     
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._data["nu"] 
         self._update_cmap_range()
@@ -326,7 +236,7 @@ class ImguiEdgeWindow(EdgeWindow):
         else:
             self._cmap_lut = np.array([self._cmap_function(i/(self._N_colors-1)) for i in range(self._N_colors)]).astype(np.float32)
         
-        self._cmap_lut[:, :3] = srgb_to_linear(self._cmap_lut[:, :3])  # Convert sRGB to linear space for correct interpolation
+        self._cmap_lut[:, :3] = fl.utils.srgb_to_linear(self._cmap_lut[:, :3])  # Convert sRGB to linear space for correct interpolation
 
     def _update_cmap_range(self):
         if self._use_percase_cmap: data_array = self._data_array.flatten()
