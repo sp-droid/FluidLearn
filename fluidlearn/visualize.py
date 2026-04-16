@@ -196,7 +196,7 @@ figure = fpl.Figure(size=(1920, 1080))
 # figure.canvas.set_title("CFD Visualizer")
 
 gui = CFDvisualizerUnstructured(
-    figure
+    figure,
     data_location=Path(r"data/01_raw")
 )
 figure.add_gui(gui)
