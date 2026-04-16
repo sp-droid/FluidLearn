@@ -1,30 +1,38 @@
+from time import time
+
 from imgui_bundle import imgui
 
-class UIpanel:
+
+class UIpanel():
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def UI_dataset(self):
+        self._is_playing = False
+        self._play_fps = 21
+        self._frame_time = 1.0 / self._play_fps
+        self._last_frame_time = 0.0
+
+    def UI_dataset(self, dataset_index, available_datasets, case, snapshot, pipeline_update_dataset, constants):
         #### Dropdown for dataset selection
         imgui.text("Dataset properties")
         changed_dataset, self._dataset_index = imgui.combo(
             "Dataset",
             self._dataset_index,
-            self._available_datasets
+            available_datasets
         )
         if changed_dataset:
-            self._case = 0
-            self._snapshot = 0
-            self._pipeline_update_dataset()
-        for key, value in self._constants.items():
+            case = 0
+            snapshot = 0
+            pipeline_update_dataset()
+        for key, value in constants.items():
             imgui.text(f"{key}: {value}")
         imgui.separator()
 
     def UI_mesh(self):
         #### Mesh properties and mesh mode (vertex interpolation or face constant)
         imgui.text("Mesh")
-        imgui.text(f"Cells: {self._N_cells}")
-        imgui.text(f"Vertices: {self._N_vertices}")
+        imgui.text(f"Cells: {self._data.N_cells}")
+        imgui.text(f"Vertices: {self._data.N_vertices}")
         if imgui.button("Mesh Mode: Vertex Interpolation" if self._use_vertex_interpolation else "Mode: Face Constant"):
             self._use_vertex_interpolation = not self._use_vertex_interpolation
             self._pipeline_update_mesh()
@@ -88,7 +96,7 @@ class UIpanel:
         changed_flowfield, self._flowfield_index = imgui.combo(
             "Flowfield",
             self._flowfield_index,
-            self._available_flowfields
+            self._data.available_flowfields
         )
         if changed_flowfield:
             self._pipeline_update_case()
@@ -127,11 +135,11 @@ class UIpanel:
             "##case",
             self._case,
             0,
-            self._N_cases - 1
+            self._data.N_cases - 1
         )
-        imgui.text(f"Case: {self._case} / {self._N_cases-1}")
-        imgui.text(f"Reynolds number: {self._Re}")
-        imgui.text(f"Kinematic viscosity: {self._data['nu']:.2e} m^2/s")
+        imgui.text(f"Case: {self._case} / {self._data.N_cases-1}")
+        imgui.text(f"Reynolds number: {self._data.Re}")
+        imgui.text(f"Kinematic viscosity: {self._data.nu:.2e} m^2/s")
         imgui.separator()
 
     def UI_snapshot(self):
@@ -141,7 +149,7 @@ class UIpanel:
             "##snapshot",
             self._snapshot,
             0,
-            self._N_snapshots - 1
+            self._data.N_snapshots - 1
         )
         if changed_snapshot:
             if not self._use_percase_cmap: self._update_cmap_range() # Update colormap range if in per-snapshot mode
@@ -164,7 +172,7 @@ class UIpanel:
         if self._is_playing:
             current_time = time()
             if current_time - self._last_frame_time >= self._frame_time:
-                self._snapshot = (self._snapshot + 1) % self._N_snapshots
+                self._snapshot = (self._snapshot + 1) % self._data.N_snapshots
                 self._fast_load_snapshot()
                 self._last_frame_time = current_time
         imgui.separator()
@@ -172,5 +180,5 @@ class UIpanel:
     def UI_highlighter(self):
         imgui.text(f"Highlighted cell:")
         imgui.text(f"\t- ID: {self._highlighter.cell}")
-        imgui.text(f"\t- Flowfield value: {self._highlighter.flowvalue:.3f} {self._flowfield_units[self._flowfield_index]}")
+        imgui.text(f"\t- Flowfield value: {self._highlighter.flowvalue:.3f} {self._data.flowfield_units[self._flowfield_index]}")
         imgui.separator()

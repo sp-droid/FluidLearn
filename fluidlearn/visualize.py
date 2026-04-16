@@ -1,12 +1,7 @@
 #### IMPORTS
-import json
-from time import time
 from pathlib import Path
 
-import h5py
 import numpy as np
-from numba import jit
-from scipy import io
 from scipy.spatial import Delaunay, cKDTree
 import matplotlib.pyplot as plt
 
@@ -17,18 +12,20 @@ from fastplotlib.ui import EdgeWindow
 # Local imports
 import fluidlearn as fl
 
-class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
+class CFDvisualizerUnstructured(fl.vis.UIpanel, EdgeWindow):
     def __init__(self, figure, size, location, title, data_location=Path.cwd()):
         super().__init__(figure=figure, size=size, location=location, title=title, data_location=data_location)
-        # this UI will modify the line
+        
         self._width = size
         self._figure = figure
+
         self._case = 0
         self._snapshot = 0
         self._use_vertex_interpolation = False
 
-        self._data_location = data_location
-        self._available_datasets = [folder.stem for folder in self._data_location.iterdir() if folder.is_dir()]
+        self._data = fl.data.DataLoaderUnstructured()
+        self._data.explore_datasets(data_location)
+        
         self._dataset_index = 0
 
         self._available_cmaps = ["jet", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight"]
@@ -38,87 +35,71 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
         self._N_colors = 300
         self._define_cmap()
 
-        self._available_flowfields = ["Kinematic pressure", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
-        self._flowfield_units = ["m^2/s^2", "m/s", "m/s", "m/s", "1/s"]
+        
         self._flowfield_index = 3
 
         self._colorbar_N_rects = 60
         self._prebuild_colorbar_texture()
 
-        self._is_playing = False
-        self._play_fps = 21
-        self._frame_time = 1.0 / self._play_fps
-        self._last_frame_time = 0.0
-
-        self._is_highlighting = False
-
         self._pipeline_update_dataset()
 
     def _pipeline_update_dataset(self):
-        self._load_dataset()
+        self._data.load_dataset(self._dataset_index)
         self._pipeline_update_mesh()
 
     def _pipeline_update_mesh(self):
-        self._load_mesh()
+        self._data.load_mesh()
+        self._plot_mesh()
+        self._precompute_gradient()
+        
+        # KD tree for fast nearest cell lookup during highlighting
+        self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2])
+        self._highlighter = fl.vis.MeshHighlighter2D(self)
+
         self._pipeline_update_case()
 
     def _pipeline_update_case(self):
-        self._load_case()
+        self._data.load_case(self._case, self._flowfield_index)
+        self._update_cmap_range()
         self._load_snapshot()
 
-    def _load_dataset(self):
-        self._dataset_path = self._data_location / self._available_datasets[self._dataset_index]
-
-        self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "mesh"], key=lambda x: float(x.stem))
-        self._N_cases = len(self._cases)
-
-        with open(self._dataset_path / "constants.json", "r") as file:
-            self._constants = json.load(file)
-
-    def _load_mesh(self):
-        with h5py.File(self._dataset_path / "mesh.h5", "r") as file:
-            self._mesh_centers = file["centroids"][:].astype(np.float32)
-            self._mesh_vertices = file["vertices"][:].astype(np.float32)
-            self._mesh_indices = file["indices"][:].astype(np.uint32)
-
-        self._N_cells = len(self._mesh_centers)
-        self._N_vertices = len(self._mesh_vertices)
-
+    def _precompute_gradient(self):
         # Find cells connected to each vertex
-        vertex_connections, vertex_connections_mask = fl.utils.cells_per_vertex(self._mesh_indices, self._N_vertices)
+        vertex_connections, vertex_connections_mask = fl.utils.cells_per_vertex(self._data.mesh_indices, self._data.mesh_vertices.shape[0])
         # Find neighboring cells for each cell
-        self._cell_neighbors, self._cell_neighbors_mask = fl.utils.neighbors_per_cell(self._mesh_indices, vertex_connections, vertex_connections_mask)
+        self._cell_neighbors, self._cell_neighbors_mask = fl.utils.neighbors_per_cell(self._data.mesh_indices, vertex_connections, vertex_connections_mask)
         # Precompute least squares weights for gradient computation
-        self._lsq_weights = fl.utils.unstructured_lsq_weights(self._mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
+        self._lsq_weights = fl.utils.unstructured_lsq_weights(self._data.mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
         # Gradient function
-        self._gradient = lambda field: fl.utils.unstructured_gradient(
+        self._data.gradient = lambda field: fl.utils.unstructured_gradient(
             field, 
             precomputed_weights=self._lsq_weights, 
             cell_neighbors=self._cell_neighbors, 
             cell_neighbors_mask=self._cell_neighbors_mask
         )
-        
+
+    def _plot_mesh(self):
         # Random colors for visualizing each cell
-        self._random_colors = np.random.rand(self._N_cells, 4).astype(np.float32)
+        self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
         # Per-vertex or per-face coloring
         if hasattr(self, "_mesh"):
             self._figure[0, 0].remove_graphic(self._mesh)
         if self._use_vertex_interpolation:
-            triangulation = Delaunay(self._mesh_centers[:, :2])  # Use x,y coords only
+            triangulation = Delaunay(self._data.mesh_centers[:, :2])  # Use x,y coords only
             self._triangles = triangulation.simplices.astype(np.uint32)
             
-            mesh_min, mesh_max = np.min(self._mesh_centers, axis=0), np.max(self._mesh_centers, axis=0)
+            mesh_min, mesh_max = np.min(self._data.mesh_centers, axis=0), np.max(self._data.mesh_centers, axis=0)
             self._mesh = self._figure[0, 0].add_mesh(
-                self._mesh_centers,
+                self._data.mesh_centers,
                 self._triangles,
                 colors=self._random_colors,
                 mode="basic" # lighting mode, just ambient light. Default is "phong"
             )
         else:
-            mesh_min, mesh_max = np.min(self._mesh_vertices, axis=0), np.max(self._mesh_vertices, axis=0)
+            mesh_min, mesh_max = np.min(self._data.mesh_vertices, axis=0), np.max(self._data.mesh_vertices, axis=0)
             self._mesh = self._figure[0, 0].add_mesh(
-                self._mesh_vertices,
-                self._mesh_indices,
+                self._data.mesh_vertices,
+                self._data.mesh_indices,
                 colors=self._random_colors,
                 mode="basic"
             )
@@ -126,42 +107,8 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
         self._figure[0,0].camera.show_object(self._mesh.world_object)
         self._figure[0,0].camera.zoom = 1.2
 
-        # KD tree for fast nearest cell lookup during highlighting
-        self._cell_kdtree = cKDTree(self._mesh_centers[:, :2])
-        self._highlighter = fl.vis.MeshHighlighter2D(self)
-        self._mesh.add_event_handler(self._highlighter.on_pointer_move, "pointer_move")
-        self._mesh.add_event_handler(self._highlighter.on_pointer_leave, "pointer_leave")        
-
-    def _load_case(self): # Flowfield and case specific data
-        chosen_case = self._cases[self._case]
-        flowfield = self._available_flowfields[self._flowfield_index]   # i.e., "p", "Ux", "Uy", "|U|"...
-
-        self._data = {}
-        with h5py.File(chosen_case, "r") as file:
-            self._data["nu"] = file.attrs['nu']
-            self._data["t"] = file['t'][:].astype(np.float32)
-            self._N_snapshots = self._data["t"].shape[0]
-            match flowfield:
-                case "Kinematic pressure":
-                    self._data_array = file['p'][:, :].astype(np.float32)
-                case "Horizontal velocity":
-                    self._data_array = file['U'][:, :, 0].astype(np.float32)
-                case "Vertical velocity":
-                    self._data_array = file['U'][:, :, 1].astype(np.float32)
-                case "Velocity magnitude":
-                    self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
-                case "Vorticity":
-                    self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
-                    for snap in range(self._N_snapshots):
-                        U_grad = self._gradient(file['U'][snap, :, 0])
-                        V_grad = self._gradient(file['U'][snap, :, 1])
-                        self._data_array[snap] = V_grad[0] - U_grad[1]
-    
-        self._Re = self._constants["Uc"] * self._constants["Lc"] / self._data["nu"] 
-        self._update_cmap_range()
-
     def _load_snapshot(self):
-        data_array = self._data_array[self._snapshot]
+        data_array = self._data.data_array[self._snapshot]
         data_array = np.clip(data_array, self._clip_min, self._clip_max)
 
         normalized = ((data_array - self._clip_min) / (self._clip_max - self._clip_min) * (self._N_colors-1)).astype(np.uint32)
@@ -170,13 +117,13 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
             self._mesh.colors = self._random_colors
         else:
             self._mesh.colors = self._cmap_lut[normalized]
-        self._t = self._data["t"][self._snapshot]
+        self._t = self._data.time[self._snapshot]
 
     def _precompute_fast_load_snapshot(self):
         if self._cmap == "random": return
-        self._fullcase = np.empty((self._N_snapshots, self._N_cells, 4), dtype=np.float32)
-        for j in range(self._N_snapshots):
-            data_array = self._data_array[j]
+        self._fullcase = np.empty((self._data.N_snapshots, self._data.N_cells, 4), dtype=np.float32)
+        for j in range(self._data.N_snapshots):
+            data_array = self._data.data_array[j]
             data_array = np.clip(data_array, self._clip_min, self._clip_max)
             
             normalized = ((data_array - self._clip_min) / (self._clip_max - self._clip_min) * (self._N_colors-1)).astype(np.uint32)
@@ -185,7 +132,7 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
     def _fast_load_snapshot(self):
         if self._cmap == "random": return
         self._mesh.colors = self._fullcase[self._snapshot]
-        self._t = self._data["t"][self._snapshot]
+        self._t = self._data.time[self._snapshot]
 
     def _define_cmap(self): # Define colormap and its lookup table
         self._cmap = self._available_cmaps[self._cmap_index]
@@ -201,9 +148,9 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
         self._cmap_lut[:, :3] = fl.utils.srgb_to_linear(self._cmap_lut[:, :3])  # Convert sRGB to linear space for correct interpolation
 
     def _update_cmap_range(self):
-        if self._use_percase_cmap: data_array = self._data_array.flatten()
-        else: data_array = self._data_array[self._snapshot]
-        
+        if self._use_percase_cmap: data_array = self._data.data_array.flatten()
+        else: data_array = self._data.data_array[self._snapshot]
+
         self._data_min = np.min(data_array)
         self._clip_min = self._data_min 
         self._data_max = np.max(data_array)
@@ -223,7 +170,7 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
         self._colorbar_packed_color = (colors[:,3] << 24) | (colors[:,2] << 16) | (colors[:,1] << 8) | colors[:,0]
 
     def update(self):
-        self.UI_dataset()
+        self.UI_dataset(self._dataset_index, self._data.available_datasets, self._case, self._snapshot, self._pipeline_update_dataset, self._data.constants)
         self.UI_mesh()
         self.UI_cmap()
         self.UI_flowdata()
@@ -233,13 +180,13 @@ class CFDvisualizer(fl.vis.UIpanel, EdgeWindow):
 
 # Plotting
 figure = fpl.Figure(size=(1920, 1080))
-figure.canvas.set_title("CFD Visualization")
+figure.canvas.set_title("CFD Visualizer")
 
-gui = CFDvisualizer(
+gui = CFDvisualizerUnstructured(
     figure,  # the figure this GUI instance should live inside
     size=275,  # width or height of the GUI window within the figure
     location="right",  # the edge to place this window at
-    title="CFD Visualization",  # window title
+    title="CFD Visualizer",  # window title
     data_location=Path(r"data/01_raw")
 )
 figure.add_gui(gui)

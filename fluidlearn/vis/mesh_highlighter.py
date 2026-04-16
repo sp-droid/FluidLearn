@@ -16,6 +16,9 @@ class MeshHighlighter2D:
         self._highlighted_flowvalue = 0.0
         self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 
+        parent._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
+        parent._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
+
     def on_pointer_leave(self, event):
         if self._highlighted_cell != -1:
             self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
@@ -51,7 +54,7 @@ class MeshHighlighter2D:
                     self._mesh.colors[neighbor][3] = 0.5
 
             self._mesh.colors[cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._parent._data_array[self._parent._snapshot, cell_index]
+            self._highlighted_flowvalue = self._parent._data.data_array[self._parent._snapshot, cell_index]
 
             self._mesh.colors.buffer.update_full()
             self._highlighted_cell = cell_index
@@ -63,4 +66,4 @@ class MeshHighlighter2D:
     @property
     def flowvalue(self):
         if self._highlighted_cell == -1: return 0.0
-        return self._parent._data_array[self._parent._snapshot, self._highlighted_cell]
+        return self._parent._data.data_array[self._parent._snapshot, self._highlighted_cell]
