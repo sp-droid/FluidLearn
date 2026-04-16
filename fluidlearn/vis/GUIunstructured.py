@@ -32,7 +32,7 @@ class Controller:
     clip_min: np.float32 = np.float32(0.0)
     clip_max: np.float32 = np.float32(1.0)
 
-class GUIUnstructuredCFD(EdgeWindow):
+class GUIUnstructured(EdgeWindow):
     def __init__(self,
             figure,
             size: int=275,
@@ -201,18 +201,20 @@ class Pipeline:
 
         self._cmap.build_lut(logscale=self._controller.cmap_logscale, space="linear")
 
-# Plotting
-figure = fpl.Figure(size=(1920, 1080))
-# figure.canvas.set_title("CFD Visualizer")
 
-gui = GUIUnstructuredCFD(
-    figure,
-    data_location=Path(r"data/01_raw")
-)
-figure.add_gui(gui)
 
-figure.show()
-figure.imgui_show_fps = True
+def gui_main(path=Path(r"data/01_raw")):
+    figure = fpl.Figure(size=(1920, 1080))
+    figure.canvas.set_title("FluidLearn - Unstructured CFD Visualizer")
+    gui = GUIUnstructured(
+        figure,
+        data_location=path
+    )
+    figure.add_gui(gui)
+
+    figure.show()
+    figure.imgui_show_fps = True
+    fpl.loop.run()
 
 if __name__ == "__main__":
-    fpl.loop.run()
+    gui_main()

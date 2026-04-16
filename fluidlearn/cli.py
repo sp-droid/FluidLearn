@@ -3,10 +3,15 @@ FluidLearn Interactive CLI Tool
 
 Uses InquirerPy for beautiful, interactive menu navigation.
 """
-
+# Standard
 from pathlib import Path
+
+# Third-party
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
+
+# Local
+import fluidlearn as fl
 
 def get_version():
     """Extract version from main package"""
@@ -31,59 +36,47 @@ def print_banner():
     """
     print(banner)
 
-
-def data_processing():
-    """Handle data processing workflow."""
-    print("\n🔄 Data Processing selected")
-    print("   This feature is coming soon! Stay tuned.\n")
-
-
-def training():
-    """Handle training workflow."""
-    print("\n🎓 Training selected")
-    print("   This feature is coming soon! Stay tuned.\n")
-
-
-def visualization_raw():
-    """Execute raw visualization from src/visualization.py"""
-    print("\n📊 Executing raw visualization...")
-    import sys
-    src_path = Path(__file__).parent
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
+# def visualization_raw():
+#     """Execute raw visualization from src/visualization.py"""
+#     print("\n📊 Executing raw visualization...")
+#     import sys
+#     src_path = Path(__file__).parent
+#     if str(src_path) not in sys.path:
+#         sys.path.insert(0, str(src_path))
     
-    import visualization
-    print("✅ Raw visualization completed!\n")
+#     import visualization
+#     print("✅ Raw visualization completed!\n")
 
-
-def visualization_processed():
-    """Execute processed visualization from src/visualize.py"""
-    print("\n📈 Executing processed visualization...")
-    import sys
-    src_path = Path(__file__).parent
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    
-    import visualize
-    print("✅ Processed visualization completed!\n")
-
-
-def visualization_submenu():
-    """Submenu for visualization options."""
+def raw_data_submenu():
+    """Submenu for data options."""
     while True:
         choice = inquirer.select(
-            message="🎨 Visualization Options:",
+            message="🎨 Raw Data Options:",
             choices=[
-                Choice(value="raw", name="📊 Raw Visualization"),
-                Choice(value="processed", name="📈 Processed Visualization"),
+                Choice(value="raw", name="🎨 Visualise"),
                 Choice(value="back", name="🔙 Back to Main Menu"),
             ],
         ).execute()
         
         if choice == "raw":
-            visualization_raw()
-        elif choice == "processed":
-            visualization_processed()
+            from fluidlearn.vis.GUIunstructured import gui_main
+            gui_main()
+        elif choice == "back":
+            break
+
+def data_submenu():
+    """Submenu for data options."""
+    while True:
+        choice = inquirer.select(
+            message="🎨 Data Options:",
+            choices=[
+                Choice(value="raw", name="📊 Raw Data"),
+                Choice(value="back", name="🔙 Back to Main Menu"),
+            ],
+        ).execute()
+        
+        if choice == "raw":
+            raw_data_submenu()
         elif choice == "back":
             break
 
@@ -96,19 +89,17 @@ def main_menu():
         choice = inquirer.select(
             message="🚀 FluidLearn - Main Menu:",
             choices=[
-                Choice(value="data", name="📊 Data Processing"),
+                Choice(value="data", name="📊 Data"),
                 Choice(value="train", name="🎓 Training"),
-                Choice(value="viz", name="🎨 Visualization"),
                 Choice(value="exit", name="🚪 Exit"),
             ],
         ).execute()
         
         if choice == "data":
-            data_processing()
+            data_submenu()
         elif choice == "train":
-            training()
-        elif choice == "viz":
-            visualization_submenu()
+            pass
+            # training()
         elif choice == "exit":
             print("\n👋 Thank you for using FluidLearn!\n")
             break
