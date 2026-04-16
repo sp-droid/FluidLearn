@@ -16,19 +16,18 @@ from fluidlearn.data import DataLoaderUnstructured
 from fluidlearn.vis import MeshHighlighter2D, UIpanel
 
 class Controller:
-    def __init__(self):
-        self.dataset = 0
-        self.vertex_interpolation = False
-        self.case = 0
-        self.flowfield = 3
-        self.snapshot = 0
+    dataset = 0
+    vertex_interpolation = False
+    case = 0
+    flowfield = 3
+    snapshot = 0
 
-        self.percase_cmap = True
-        self.cmap_logscale = False
-        self.cmap = 0
+    percase_cmap = True
+    cmap_logscale = False
+    cmap = 0
 
-        self.clip_min = np.float32(0.0)
-        self.clip_max = np.float32(1.0)
+    clip_min = np.float32(0.0)
+    clip_max = np.float32(1.0)
 
 class CFDvisualizerUnstructured(UIpanel, EdgeWindow):
     def __init__(self,
