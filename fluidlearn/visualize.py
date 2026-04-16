@@ -12,6 +12,8 @@ from fastplotlib.ui import EdgeWindow
 
 # Local imports
 import fluidlearn as fl
+from fluidlearn.data import DataLoaderUnstructured
+from fluidlearn.vis import MeshHighlighter2D, UIpanel
 
 class Controller:
     def __init__(self):
@@ -28,7 +30,7 @@ class Controller:
         self.clip_min = np.float32(0.0)
         self.clip_max = np.float32(1.0)
 
-class CFDvisualizerUnstructured(fl.vis.UIpanel, EdgeWindow):
+class CFDvisualizerUnstructured(UIpanel, EdgeWindow):
     def __init__(self,
             figure,
             size: int=275,
@@ -36,15 +38,14 @@ class CFDvisualizerUnstructured(fl.vis.UIpanel, EdgeWindow):
             title: str="CFD Visualizer",
             data_location=Path.cwd()
         ):
-        fl.vis.UIpanel.__init__(self, size=size)
+        UIpanel.__init__(self, size=size)
         EdgeWindow.__init__(self, figure=figure, size=size, location=location, title=title, data_location=data_location)
         
-        self._width = size
         self._figure = figure
 
         self._controller = Controller()
 
-        self._data = fl.data.DataLoaderUnstructured()
+        self._data = DataLoaderUnstructured()
         self._data.explore_datasets(data_location)
 
         self._available_cmaps = ["jet", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight"]
@@ -68,7 +69,7 @@ class CFDvisualizerUnstructured(fl.vis.UIpanel, EdgeWindow):
         
         # KD tree for fast nearest cell lookup during highlighting
         self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2])
-        self._highlighter = fl.vis.MeshHighlighter2D(self)
+        self._highlighter = MeshHighlighter2D(self)
 
         self._pipeline_update_case()
 
@@ -116,6 +117,7 @@ class CFDvisualizerUnstructured(fl.vis.UIpanel, EdgeWindow):
                 mode="basic"
             )
 
+        # Reset camera to fit the new mesh
         self._figure[0,0].camera.show_object(self._mesh.world_object)
         self._figure[0,0].camera.zoom = 1.2
 
