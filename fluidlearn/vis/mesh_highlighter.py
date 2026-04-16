@@ -54,7 +54,7 @@ class MeshHighlighter2D:
                     self._mesh.colors[neighbor][3] = 0.5
 
             self._mesh.colors[cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._parent._data.data_array[self._parent._snapshot, cell_index]
+            self._highlighted_flowvalue = self._parent._data.data_array[self._parent._controller.snapshot, cell_index]
 
             self._mesh.colors.buffer.update_full()
             self._highlighted_cell = cell_index
@@ -66,4 +66,4 @@ class MeshHighlighter2D:
     @property
     def flowvalue(self):
         if self._highlighted_cell == -1: return 0.0
-        return self._parent._data.data_array[self._parent._snapshot, self._highlighted_cell]
+        return self._parent._data.data_array[self._parent._controller.snapshot, self._highlighted_cell]
