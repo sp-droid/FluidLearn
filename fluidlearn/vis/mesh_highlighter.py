@@ -1,12 +1,14 @@
 import numpy as np
 
 class MeshHighlighter2D:
-    def __init__(self, parent):
+    def __init__(self, parent, controller, plotter):
         self._parent = parent
+        self._controller = controller
+        self._plotter = plotter
 
         # Static parts
-        self._figure = parent._figure
-        self._mesh = parent._mesh
+        self._figure = self._plotter.figure
+        self._mesh = self._plotter.mesh
         self._cell_neighbors = parent._cell_neighbors
         self._cell_neighbors_mask = parent._cell_neighbors_mask
         self._cell_kdtree = parent._cell_kdtree
@@ -16,8 +18,8 @@ class MeshHighlighter2D:
         self._highlighted_flowvalue = 0.0
         self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
 
-        parent._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
-        parent._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
+        self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
+        self._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
 
     def on_pointer_leave(self, event):
         if self._highlighted_cell != -1:

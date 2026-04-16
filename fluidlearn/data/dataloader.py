@@ -10,11 +10,9 @@ class DataLoaderUnstructured:
         self._flowfield_units = ["m^2/s^2", "m/s", "m/s", "m/s", "1/s"]
 
     @property
-    def available_flowfields(self):
-        return self._available_flowfields
+    def available_flowfields(self): return self._available_flowfields
     @property
-    def flowfield_units(self):
-        return self._flowfield_units
+    def flowfield_units(self): return self._flowfield_units
 
     def explore_datasets(self, data_location):
         self._location = data_location
@@ -34,14 +32,11 @@ class DataLoaderUnstructured:
             self._constants = json.load(file)
 
     @property
-    def cases(self):
-        return self._cases
+    def cases(self): return self._cases
     @property
-    def N_cases(self):
-        return self._N_cases
+    def N_cases(self): return self._N_cases
     @property
-    def constants(self):
-        return self._constants
+    def constants(self): return self._constants
 
     def load_mesh(self):
         with h5py.File(self._dataset_path / "mesh.h5", "r") as file:
@@ -53,24 +48,18 @@ class DataLoaderUnstructured:
         self._N_vertices = len(self._mesh_vertices)
 
     @property
-    def N_cells(self):
-        return self._N_cells
+    def N_cells(self): return self._N_cells
     @property
-    def N_vertices(self):
-        return self._N_vertices
+    def N_vertices(self): return self._N_vertices
     @property
-    def mesh_centers(self):
-        return self._mesh_centers
+    def mesh_centers(self): return self._mesh_centers
     @property
-    def mesh_vertices(self):
-        return self._mesh_vertices
+    def mesh_vertices(self): return self._mesh_vertices
     @property
-    def mesh_indices(self):
-        return self._mesh_indices
+    def mesh_indices(self): return self._mesh_indices
 
     @property
-    def gradient(self):
-        return self._gradient
+    def gradient(self): return self._gradient
     @gradient.setter
     def gradient(self, function):
         self._gradient = function
@@ -102,17 +91,12 @@ class DataLoaderUnstructured:
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
 
     @property
-    def N_snapshots(self):
-        return self._N_snapshots
+    def N_snapshots(self): return self._N_snapshots
     @property
-    def data_array(self):
-        return self._data_array
+    def data_array(self): return self._data_array
     @property
-    def time(self):
-        return self._time
+    def time(self): return self._time
     @property
-    def nu(self):
-        return self._nu
+    def nu(self): return self._nu
     @property
-    def Re(self):
-        return self._Re
+    def Re(self): return self._Re

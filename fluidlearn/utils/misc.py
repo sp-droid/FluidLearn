@@ -5,28 +5,6 @@ from typing import Tuple, Any
 import numpy as np
 from numba import jit
 
-
-# Colors
-def srgb_to_linear(
-        rgb: np.ndarray
-    ) -> np.ndarray:
-    """Convert sRGB color to linear RGB
-    
-    Args:
-        rgb (np.ndarray): sRGB color values (0-1)
-
-    Returns:
-        np.ndarray: Linear RGB color values (0-1)
-    """
-
-    rgb = np.asarray(rgb, dtype=np.float32)
-    return np.where(
-        rgb <= 0.04045,
-        rgb / 12.92,
-        ((rgb + 0.055) / 1.055) ** 2.4
-    )
-
-# Arrays
 @jit
 def most_repeated(
         arr: np.ndarray
