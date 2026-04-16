@@ -4,7 +4,7 @@ from typing import Literal
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.spatial import Delaunay, cKDTree
+from scipy.spatial import Delaunay, cKDTree # type: ignore
 import matplotlib.pyplot as plt
 
 # Special
@@ -210,10 +210,10 @@ def gui_main(path=Path(r"data/01_raw")):
         figure,
         data_location=path
     )
-    figure.add_gui(gui)
+    figure.add_gui(gui) # type: ignore
 
     figure.show()
-    figure.imgui_show_fps = True
+    figure.imgui_show_fps = True # type: ignore
     fpl.loop.run()
 
 if __name__ == "__main__":

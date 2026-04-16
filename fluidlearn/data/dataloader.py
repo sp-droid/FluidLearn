@@ -40,9 +40,9 @@ class DataLoaderUnstructured:
 
     def load_mesh(self):
         with h5py.File(self._dataset_path / "mesh.h5", "r") as file:
-            self._mesh_centers = file["centroids"][:].astype(np.float32)
-            self._mesh_vertices = file["vertices"][:].astype(np.float32)
-            self._mesh_indices = file["indices"][:].astype(np.uint32)
+            self._mesh_centers = file["centroids"][:].astype(np.float32) # type: ignore
+            self._mesh_vertices = file["vertices"][:].astype(np.float32) # type: ignore
+            self._mesh_indices = file["indices"][:].astype(np.uint32) # type: ignore
 
         self._N_cells = len(self._mesh_centers)
         self._N_vertices = len(self._mesh_vertices)
@@ -70,22 +70,23 @@ class DataLoaderUnstructured:
 
         with h5py.File(chosen_case, "r") as file:
             self._nu = file.attrs['nu']
-            self._time = file['t'][:].astype(np.float32)
+            
+            self._time = file['t'][:].astype(np.float32) # type: ignore
             self._N_snapshots = self._time.shape[0]
             match flowfield:
                 case "Kinematic pressure":
-                    self._data_array = file['p'][:, :].astype(np.float32)
+                    self._data_array = file['p'][:, :].astype(np.float32) # type: ignore
                 case "Horizontal velocity":
-                    self._data_array = file['U'][:, :, 0].astype(np.float32)
+                    self._data_array = file['U'][:, :, 0].astype(np.float32) # type: ignore
                 case "Vertical velocity":
-                    self._data_array = file['U'][:, :, 1].astype(np.float32)
+                    self._data_array = file['U'][:, :, 1].astype(np.float32) # type: ignore
                 case "Velocity magnitude":
-                    self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
+                    self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32) # type: ignore
                 case "Vorticity":
                     self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                     for snap in range(self._N_snapshots):
-                        U_grad = self._gradient(file['U'][snap, :, 0])
-                        V_grad = self._gradient(file['U'][snap, :, 1])
+                        U_grad = self._gradient(file['U'][snap, :, 0]) # type: ignore
+                        V_grad = self._gradient(file['U'][snap, :, 1]) # type: ignore
                         self._data_array[snap] = V_grad[0] - U_grad[1]
     
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu

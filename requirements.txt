@@ -11,3 +11,9 @@ h5py
 pandas
 numba
 scikit-learn
+
+conda install libjpeg-turbo
+simplejpeg
+fastplotlib[notebook,imgui]
+glfw
+imageio
