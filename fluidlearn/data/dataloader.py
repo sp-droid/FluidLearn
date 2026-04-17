@@ -6,7 +6,7 @@ import numpy as np
 
 class DataLoaderUnstructured:
     def __init__(self):
-        self._available_flowfields = ["Kinematic pressure", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
+        self._available_flowfields = ["Kinematic pressure", "Kinematic pressure gradient magnitude", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
         self._flowfield_units = ["m^2/s^2", "m/s", "m/s", "m/s", "1/s"]
 
     @property
@@ -76,6 +76,11 @@ class DataLoaderUnstructured:
             match flowfield:
                 case "Kinematic pressure":
                     self._data_array = file['p'][:, :].astype(np.float32) # type: ignore
+                case "Kinematic pressure gradient magnitude":
+                    self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
+                    for snap in range(self._N_snapshots):
+                        p_grad = self._gradient(file['p'][snap, :]) # type: ignore
+                        self._data_array[snap] = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
                 case "Horizontal velocity":
                     self._data_array = file['U'][:, :, 0].astype(np.float32) # type: ignore
                 case "Vertical velocity":

@@ -26,7 +26,7 @@ def srgb_to_linear(
     )
 
 class Colormap:
-    _available_cmaps = ["jet", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight"]
+    _available_cmaps = ["jet", "binary", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight"]
     def __init__(self):
         pass
 
@@ -34,12 +34,12 @@ class Colormap:
     def available_cmaps(self):
         return self._available_cmaps
 
+    def set_cmap(self, cmap_name: str, reverse: bool=False):
+        self._name = cmap_name
+        if reverse: self._name += "_r"
+        self._function = plt.colormaps[self._name]
     @property
     def name(self): return self._name
-    @name.setter
-    def name(self, value):
-        self._name = value
-        self._function = plt.colormaps[value]
 
     def __call__(self, array):
         return self._function(array)

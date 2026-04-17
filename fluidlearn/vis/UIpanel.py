@@ -63,12 +63,20 @@ class UIpanel():
 
     def UI_cmap(self):
         #### Dropdown for cmap selection
+        imgui.text("Colormap")
         changed_cmap, self._controller.cmap = imgui.combo(
-            "Colormap",
+            "",
             self._controller.cmap,
             self._cmap.available_cmaps
         )
         if changed_cmap:
+            self._pipeline._define_cmap()
+            self._prebuild_cbar_texture()
+            self._pipeline._load_snapshot()
+        #### Reverse colormap
+        imgui.same_line()
+        if imgui.button("Reverse"):
+            self._controller.cmap_reverse = not self._controller.cmap_reverse
             self._pipeline._define_cmap()
             self._prebuild_cbar_texture()
             self._pipeline._load_snapshot()
@@ -78,9 +86,10 @@ class UIpanel():
             self._pipeline.update_mesh()
         imgui.same_line()
         #### Logarithmic or linear colormap scale
-        if imgui.button("Log. scale" if self._controller.cmap_logscale else "Linear scale"):
+        if imgui.button("Log scale" if self._controller.cmap_logscale else "Lin. scale"):
             self._controller.cmap_logscale = not self._controller.cmap_logscale
             self._pipeline._define_cmap()
+            self._prebuild_cbar_texture()
             self._pipeline._load_snapshot()
         #### Colormap bar with min/max values
         imgui.text("Data Range")

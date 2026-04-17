@@ -22,11 +22,12 @@ class Controller:
     dataset: int = 0
     vertex_interpolation: bool = False
     case: int = 0
-    flowfield: int = 3
+    flowfield: int = 4
     snapshot: int = 0
 
     percase_cmap: bool = True
     cmap_logscale: bool = False
+    cmap_reverse: bool = False
     cmap: int = 0
 
     clip_min: np.float32 = np.float32(0.0)
@@ -197,7 +198,7 @@ class Pipeline:
     def _define_cmap(self): # Define colormap and its lookup table
         name = self._cmap.available_cmaps[self._controller.cmap]
         if name == "random": return
-        self._cmap.name = name
+        self._cmap.set_cmap(name, reverse=self._controller.cmap_reverse)
 
         self._cmap.build_lut(logscale=self._controller.cmap_logscale, space="linear")
 
