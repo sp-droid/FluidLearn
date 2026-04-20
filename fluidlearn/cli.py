@@ -51,10 +51,11 @@ def raw_data_submenu():
     """Submenu for data options."""
     while True:
         choice = inquirer.select(
-            message="🎨 Raw Data Options:",
+            message="\n🎨 Raw Data Options:",
             choices=[
                 Choice(value="raw", name="🎨 Visualise"),
                 Choice(value="back", name="🔙 Back to Main Menu"),
+                Choice(value="exit", name="🚪 Exit"),
             ],
         ).execute()
         
@@ -62,32 +63,37 @@ def raw_data_submenu():
             from fluidlearn.vis.GUIunstructured import gui_main
             gui_main()
         elif choice == "back":
-            break
+            return False  # Go back, don't exit
+        elif choice == "exit":
+            return True  # Exit application
 
 def data_submenu():
     """Submenu for data options."""
     while True:
         choice = inquirer.select(
-            message="🎨 Data Options:",
+            message="\n🎨 Data Options:",
             choices=[
                 Choice(value="raw", name="📊 Raw Data"),
                 Choice(value="back", name="🔙 Back to Main Menu"),
+                Choice(value="exit", name="🚪 Exit"),
             ],
         ).execute()
         
         if choice == "raw":
-            raw_data_submenu()
+            if raw_data_submenu():  # If True, exit
+                return True
         elif choice == "back":
-            break
+            return False
+        elif choice == "exit":
+            return True
 
 
 def main_menu():
     print_banner()
-
     """Main menu loop."""
     while True:
         choice = inquirer.select(
-            message="🚀 FluidLearn - Main Menu:",
+            message="\n🚀 FluidLearn - Main Menu:",
             choices=[
                 Choice(value="data", name="📊 Data"),
                 Choice(value="train", name="🎓 Training"),
@@ -96,10 +102,12 @@ def main_menu():
         ).execute()
         
         if choice == "data":
-            data_submenu()
+            if data_submenu():  # If True, exit
+                break
         elif choice == "train":
             pass
             # training()
         elif choice == "exit":
-            print("\n👋 Thank you for using FluidLearn!\n")
             break
+    
+    print("\n👋 Thank you for using FluidLearn!\n")
