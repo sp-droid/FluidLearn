@@ -192,9 +192,11 @@ class Pipeline:
             self._plotter.mesh.colors = self._cmap.lut[normalized]
 
         self._time = self._data.time[self._controller.snapshot]
+        self._controller.precomputed = False
 
     def _precompute_fast_load_snapshot(self):
         if self._cmap.available_cmaps[self._controller.cmap] == "random": return
+        if self._controller.precomputed: return
         self._fullcase = np.empty((self._data.N_snapshots, self._data.N_cells, 4), dtype=np.float32)
         for j in range(self._data.N_snapshots):
             data_array = self._data.data_array[j]
@@ -202,6 +204,7 @@ class Pipeline:
             
             normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
             self._fullcase[j] = self._cmap.lut[normalized]
+        self._controller.precomputed = True
 
     def _fast_load_snapshot(self):
         if self._cmap.available_cmaps[self._controller.cmap] == "random": return
