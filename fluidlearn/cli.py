@@ -64,7 +64,7 @@ def raw_data_submenu():
         ).execute()
         
         if choice == "raw":
-            from fluidlearn.vis.GUIunstructured import gui_main
+            from fluidlearn.vis.Raw_visualization import gui_main
             gui_main()
         elif choice == "back":
             return False  # Go back, don't exit
