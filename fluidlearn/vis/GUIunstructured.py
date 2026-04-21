@@ -54,6 +54,7 @@ class GUIUnstructured(EdgeWindow):
         self._data = DataLoaderUnstructured()
         self._data.explore_datasets(data_location)
         logger.debug(f"Available datasets: {self._data.available_datasets}")
+        self._controller.dataset = next((i for i, x in enumerate(self._data.available_datasets) if x == "test_TGV"), 0)
         
         # Plotting
         self._plotter = Plotter(figure, self._controller, self._data)
