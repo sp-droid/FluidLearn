@@ -91,10 +91,12 @@ class Plotter:
     def figure(self): return self._figure
 
     def plot_mesh(self):
-        # Per-vertex or per-face coloring
+        # Random colors for visualizing each cell
+        self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
+
         if hasattr(self, "_mesh"):
             self._figure[0, 0].remove_graphic(self._mesh)
-        if self._controller.vertex_interpolation:
+        if self._controller.vertex_interpolation: # Vertex interpolation mode
             triangulation = Delaunay(self._data.mesh_centers[:, :2])  # Use x,y coords only
             self._triangles = triangulation.simplices.astype(np.uint32)
             
@@ -104,8 +106,7 @@ class Plotter:
                 colors=self._random_colors,
                 mode="basic" # lighting mode, just ambient light. Default is "phong"
             )
-        else: # Random colors for visualizing each cell
-            self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
+        else: # Face constant mode
             self._mesh = self._figure[0, 0].add_mesh(
                 self._data.mesh_vertices,
                 self._data.mesh_indices,
