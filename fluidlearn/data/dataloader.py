@@ -7,7 +7,8 @@ import numpy as np
 class DataLoaderUnstructured:
     def __init__(self):
         self._available_flowfields = ["Kinematic pressure", "Kinematic pressure gradient magnitude", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
-        self._flowfield_units = ["m^2/s^2", "m/s", "m/s", "m/s", "1/s"]
+        self._flowfield_units = ["m^2/s^2", "m/s^2", "m/s", "m/s", "m/s", "1/s"]
+        assert len(self._available_flowfields) == len(self._flowfield_units)
 
     @property
     def available_flowfields(self): return self._available_flowfields
