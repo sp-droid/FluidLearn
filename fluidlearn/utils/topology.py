@@ -37,7 +37,7 @@ def cells_per_vertex(
 
 def neighbors_per_cell(
         mesh_indices: np.ndarray,
-        vertex_connections: list,
+        vertex_connections: np.ndarray,
         vertex_connections_mask: np.ndarray
     ) -> tuple:
     """Which cells are neighbors of each cell
@@ -53,25 +53,19 @@ def neighbors_per_cell(
     """
     N_cells = mesh_indices.shape[0]
     # Assuming a valid manifold mesh, the maximum number of neighboring faces is the number of vertices, because in this mesh an edge may only be shared by <=2 faces
-    max_neighbors = mesh_indices.shape[1]
+    max_neighbors = vertex_connections.shape[1]
 
     cell_neighbors = np.empty((N_cells,max_neighbors), dtype=int)
     cell_neighbors_mask = np.zeros((N_cells,max_neighbors), dtype=bool)
-    for cell in range(N_cells):
-        for i in mesh_indices[cell]:
-            vertex_con = vertex_connections[i]
-            vertex_con = vertex_con[vertex_connections_mask[i]]
-            if len(vertex_con)==0: continue
-            vertex_con = vertex_con[vertex_con!=cell]
-            if len(vertex_con)==0: continue
-            for candidate_cell in vertex_con:
-                if len(set(mesh_indices[cell]) & set(mesh_indices[candidate_cell])) > 1:
-                    if candidate_cell not in cell_neighbors[cell]:
-                        cell_neighbors[cell,np.where(cell_neighbors_mask[cell]==False)[0][0]] = candidate_cell
-                        cell_neighbors_mask[cell,np.where(cell_neighbors_mask[cell]==False)[0][0]] = True
-                        cell_neighbors[candidate_cell,np.where(cell_neighbors_mask[candidate_cell]==False)[0][0]] = cell
-                        cell_neighbors_mask[candidate_cell,np.where(cell_neighbors_mask[candidate_cell]==False)[0][0]] = True
-        
+    for cell in range(N_cells):                                 # Loop over cells
+        # Get all cells connected to the valid vertices of the original cell
+        candidates = np.concatenate([vertex_connections[vertex][vertex_connections_mask[vertex]] for vertex in mesh_indices[cell]])
+        candidates = candidates[candidates!=cell]   # Remove the original cell
+        unique_ids, counts = np.unique(candidates, return_counts=True)
+        neighbors = unique_ids[counts>1]   # Neighbors will appear at least twice
+        cell_neighbors[cell, :len(neighbors)] = neighbors
+        cell_neighbors_mask[cell, :len(neighbors)] = True
+
     return cell_neighbors, cell_neighbors_mask
 
 def unstructured_lsq_weights(
