@@ -1,4 +1,5 @@
 #### IMPORTS
+import logging
 from pathlib import Path
 from typing import Literal
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from fluidlearn.data import DataLoaderUnstructured
 from fluidlearn.utils.colormap import Colormap
 from fluidlearn.vis import MeshHighlighter2D, UIpanel
 
+logger = logging.getLogger("fluidlearn")
+
 @dataclass
 class Controller:
     dataset: int = 0
@@ -24,6 +27,7 @@ class Controller:
     case: int = 0
     flowfield: int = 4
     snapshot: int = 0
+    precomputed: bool = False
 
     percase_cmap: bool = True
     cmap_logscale: bool = False
@@ -49,6 +53,7 @@ class GUIUnstructured(EdgeWindow):
         # Data loading and processing
         self._data = DataLoaderUnstructured()
         self._data.explore_datasets(data_location)
+        logger.debug(f"Available datasets: {self._data.available_datasets}")
         
         # Plotting
         self._plotter = Plotter(figure, self._controller, self._data)
@@ -128,16 +133,16 @@ class Pipeline:
         self.update_mesh()
 
     def update_mesh(self):
-        print("Loading mesh...")
+        logger.debug("Loading mesh...")
         self._data.load_mesh()
-        print("Mesh loaded. Plotting mesh...")
+        logger.debug("Mesh loaded. Plotting mesh...")
         self._plotter.plot_mesh()
-        print("Mesh plotted. Precomputing gradient and neighbors...")
+        logger.debug("Mesh plotted. Precomputing gradient and neighbors...")
         self._precompute_gradient()
-        print("Gradient and neighbors computed.")
+        logger.debug("Gradient and neighbors computed.")
 
         self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2]) # KD tree for fast nearest cell lookup during highlighting
-        print("KDTree built for cell centers.")
+        logger.debug("KDTree built for cell centers.")
         self._highlighter = MeshHighlighter2D(self, self._controller, self._plotter)
 
         self.update_case()
@@ -151,13 +156,13 @@ class Pipeline:
     def _precompute_gradient(self):
         # Find cells connected to each vertex
         vertex_connections, vertex_connections_mask = fl.utils.cells_per_vertex(self._data.mesh_indices, self._data.mesh_vertices.shape[0])
-        print("Vertex connections computed.")
+        logger.debug("Vertex connections computed.")
         # Find neighboring cells for each cell
         self._cell_neighbors, self._cell_neighbors_mask = fl.utils.neighbors_per_cell(self._data.mesh_indices, vertex_connections, vertex_connections_mask)
-        print("Cell neighbors computed.")
+        logger.debug("Cell neighbors computed.")
         # Precompute least squares weights for gradient computation
         self._lsq_weights = fl.utils.unstructured_lsq_weights(self._data.mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
-        print("Least squares weights computed.")
+        logger.debug("Least squares weights computed.")
         # Gradient function
         self._data.gradient = lambda field: fl.utils.unstructured_gradient(
             field, 
@@ -225,4 +230,5 @@ def gui_main(path=Path(r"data/01_raw")):
     fpl.loop.run()
 
 if __name__ == "__main__":
+    logger.setLevel(level=logging.DEBUG)
     gui_main()

@@ -1,9 +1,5 @@
-"""
-FluidLearn Interactive CLI Tool
-
-Uses InquirerPy for beautiful, interactive menu navigation.
-"""
 # Standard
+import logging
 from pathlib import Path
 
 # Third-party
@@ -12,6 +8,14 @@ from InquirerPy.base.control import Choice
 
 # Local
 import fluidlearn as fl
+
+# Set up logging
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(name)s: %(message)s')
+handler.setFormatter(formatter)
+logger = logging.getLogger("fluidlearn")
+logger.addHandler(handler)
+logger.setLevel(logging.WARNING)
 
 def get_version():
     """Extract version from main package"""
@@ -97,6 +101,7 @@ def main_menu():
             choices=[
                 Choice(value="data", name="📊 Data"),
                 Choice(value="train", name="🎓 Training"),
+                Choice(value="debug_mode", name="🐞 Switch Debug Mode"),
                 Choice(value="exit", name="🚪 Exit"),
             ],
         ).execute()
@@ -107,6 +112,15 @@ def main_menu():
         elif choice == "train":
             pass
             # training()
+        elif choice == "debug_mode":
+            if logger.getEffectiveLevel() == logging.WARNING:
+                logger.setLevel(level=logging.DEBUG)
+                print("\n🐞 Logging level set to DEBUG.\n")
+                logger.debug("This is a debug message.")
+                logger.warning("This is a warning message.")
+            else:
+                logger.setLevel(level=logging.WARNING)
+                print("\n🐞 Logging level set to WARNING.\n")
         elif choice == "exit":
             break
     
