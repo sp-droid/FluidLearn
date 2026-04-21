@@ -85,8 +85,6 @@ class Plotter:
     def figure(self): return self._figure
 
     def plot_mesh(self):
-        # Random colors for visualizing each cell
-        self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
         # Per-vertex or per-face coloring
         if hasattr(self, "_mesh"):
             self._figure[0, 0].remove_graphic(self._mesh)
@@ -100,7 +98,8 @@ class Plotter:
                 colors=self._random_colors,
                 mode="basic" # lighting mode, just ambient light. Default is "phong"
             )
-        else:
+        else: # Random colors for visualizing each cell
+            self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
             self._mesh = self._figure[0, 0].add_mesh(
                 self._data.mesh_vertices,
                 self._data.mesh_indices,
@@ -129,11 +128,16 @@ class Pipeline:
         self.update_mesh()
 
     def update_mesh(self):
+        print("Loading mesh...")
         self._data.load_mesh()
+        print("Mesh loaded. Plotting mesh...")
         self._plotter.plot_mesh()
+        print("Mesh plotted. Precomputing gradient and neighbors...")
         self._precompute_gradient()
-        
+        print("Gradient and neighbors computed.")
+
         self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2]) # KD tree for fast nearest cell lookup during highlighting
+        print("KDTree built for cell centers.")
         self._highlighter = MeshHighlighter2D(self, self._controller, self._plotter)
 
         self.update_case()
@@ -147,10 +151,13 @@ class Pipeline:
     def _precompute_gradient(self):
         # Find cells connected to each vertex
         vertex_connections, vertex_connections_mask = fl.utils.cells_per_vertex(self._data.mesh_indices, self._data.mesh_vertices.shape[0])
+        print("Vertex connections computed.")
         # Find neighboring cells for each cell
         self._cell_neighbors, self._cell_neighbors_mask = fl.utils.neighbors_per_cell(self._data.mesh_indices, vertex_connections, vertex_connections_mask)
+        print("Cell neighbors computed.")
         # Precompute least squares weights for gradient computation
         self._lsq_weights = fl.utils.unstructured_lsq_weights(self._data.mesh_centers, self._cell_neighbors, self._cell_neighbors_mask)
+        print("Least squares weights computed.")
         # Gradient function
         self._data.gradient = lambda field: fl.utils.unstructured_gradient(
             field, 
@@ -172,7 +179,7 @@ class Pipeline:
         data_array = self._data.data_array[self._controller.snapshot]
         data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
 
-        if self._cmap.name == "random":
+        if self._cmap.available_cmaps[self._controller.cmap] == "random":
             self._plotter.mesh.colors = self._plotter.random_colors
         else:
             normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
@@ -181,7 +188,7 @@ class Pipeline:
         self._time = self._data.time[self._controller.snapshot]
 
     def _precompute_fast_load_snapshot(self):
-        if self._cmap.name == "random": return
+        if self._cmap.available_cmaps[self._controller.cmap] == "random": return
         self._fullcase = np.empty((self._data.N_snapshots, self._data.N_cells, 4), dtype=np.float32)
         for j in range(self._data.N_snapshots):
             data_array = self._data.data_array[j]
@@ -191,7 +198,7 @@ class Pipeline:
             self._fullcase[j] = self._cmap.lut[normalized]
 
     def _fast_load_snapshot(self):
-        if self._cmap.name == "random": return
+        if self._cmap.available_cmaps[self._controller.cmap] == "random": return
         self._plotter.mesh.colors = self._fullcase[self._controller.snapshot]
         self._time = self._data.time[self._controller.snapshot]
 
