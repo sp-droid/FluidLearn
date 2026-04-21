@@ -40,17 +40,6 @@ def print_banner():
     """
     print(banner)
 
-# def visualization_raw():
-#     """Execute raw visualization from src/visualization.py"""
-#     print("\n📊 Executing raw visualization...")
-#     import sys
-#     src_path = Path(__file__).parent
-#     if str(src_path) not in sys.path:
-#         sys.path.insert(0, str(src_path))
-    
-#     import visualization
-#     print("✅ Raw visualization completed!\n")
-
 def raw_data_submenu():
     """Submenu for data options."""
     while True:
@@ -66,6 +55,7 @@ def raw_data_submenu():
         if choice == "raw":
             from fluidlearn.vis.Raw_visualization import gui_main
             gui_main()
+            return True
         elif choice == "back":
             return False  # Go back, don't exit
         elif choice == "exit":
