@@ -170,6 +170,7 @@ class UIpanels():
             self._data.N_cases - 1
         )
         imgui.text(f"Case: {self._controller.case} / {self._data.N_cases-1}")
+        imgui.text(f"Size (MB): {self._data.size_MB:.1f}")
         imgui.text(f"Reynolds number: {self._data.Re}")
         imgui.text(f"Kinematic viscosity: {self._data.nu:.2e} m^2/s")
         imgui.separator()

@@ -97,6 +97,8 @@ class DataLoaderUnstructured:
     
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
 
+        self._size_MB = chosen_case.stat().st_size / (1024**2)
+
     @property
     def N_snapshots(self): return self._N_snapshots
     @property
@@ -107,3 +109,5 @@ class DataLoaderUnstructured:
     def nu(self): return self._nu
     @property
     def Re(self): return self._Re
+    @property
+    def size_MB(self): return self._size_MB
