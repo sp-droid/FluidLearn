@@ -70,6 +70,8 @@ class DataLoaderUnstructured:
         flowfield = self._available_flowfields[flowfield_index]   # i.e., "p", "Ux", "Uy", "|U|"...
 
         with h5py.File(chosen_case, "r") as file:
+            self._runtime = file.attrs.get("runtime", np.nan) / 60.0
+
             self._nu = file.attrs['nu']
             
             self._time = file['t'][:].astype(np.float32)
@@ -99,6 +101,8 @@ class DataLoaderUnstructured:
 
         self._size_MB = chosen_case.stat().st_size / (1024**2)
 
+    @property
+    def runtime(self): return self._runtime
     @property
     def N_snapshots(self): return self._N_snapshots
     @property
