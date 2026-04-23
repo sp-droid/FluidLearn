@@ -3,7 +3,7 @@ from time import time
 import numpy as np
 from imgui_bundle import imgui
 
-class UIpanel():
+class UIpanels():
     _is_playing = False
     _play_fps = 21
     _frame_time = 1.0 / _play_fps

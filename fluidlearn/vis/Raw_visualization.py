@@ -16,7 +16,7 @@ from fastplotlib.ui import EdgeWindow
 import fluidlearn as fl
 from fluidlearn.data import DataLoaderUnstructured
 from fluidlearn.utils.colormap import Colormap
-from fluidlearn.vis import MeshHighlighter2D, UIpanel
+from fluidlearn.vis import MeshHighlighter2D, UIpanels
 
 logger = logging.getLogger("fluidlearn")
 
@@ -70,7 +70,7 @@ class Raw_visualization(EdgeWindow):
         self._pipeline.update_dataset()
 
         # UI widgets
-        self.sidebar = UIpanel(size=size, controller=self._controller, data=self._data, pipeline=self._pipeline, cmap=self._cmap)
+        self.sidebar = UIpanels(size=size, controller=self._controller, data=self._data, pipeline=self._pipeline, cmap=self._cmap)
 
     def update(self):
         self.sidebar.UI_dataset()
@@ -113,6 +113,14 @@ class Plotter:
                 colors=self._random_colors,
                 mode="basic"
             )
+
+        # # Add a line plot to the same subplot as your mesh
+        # xs = np.linspace(0, 2 * np.pi, 100, dtype=np.float32)
+        # ys = np.sin(xs)
+        # line_data = np.zeros((100, 2), dtype=np.float32)
+        # line_data[:, 0] = xs
+        # line_data[:, 1] = ys
+        # line = self._figure[0, 0].add_line(line_data, cmap="jet_r")  # RGBA colors
 
         # Reset camera to fit the new mesh
         self._figure[0,0].camera.show_object(self._mesh.world_object)
