@@ -26,7 +26,7 @@ def srgb_to_linear(
     )
 
 class Colormap:
-    _available_cmaps = ["jet", "binary", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight"]
+    _available_cmaps = ["jet", "binary", "random", "hsv", "viridis", "plasma", "inferno", "magma", "cividis", "turbo", "coolwarm", "RdBu", "twilight","terrain"]
     def __init__(self):
         pass
 
