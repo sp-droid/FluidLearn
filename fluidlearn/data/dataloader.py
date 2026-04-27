@@ -4,7 +4,10 @@ import json
 import h5py
 import numpy as np
 
-class DataLoaderUnstructured:
+class DataLoaderUniform:
+    pass
+
+class DataLoaderMesh:
     def __init__(self):
         self._available_flowfields = ["Kinematic pressure", "Kinematic pressure gradient magnitude", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
         self._flowfield_units = ["m^2/s^2", "m/s^2", "m/s", "m/s", "m/s", "1/s"]

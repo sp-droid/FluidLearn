@@ -13,7 +13,7 @@ from fastplotlib.ui import EdgeWindow
 
 # Local imports
 import fluidlearn as fl
-from fluidlearn.data import DataLoaderUnstructured
+from fluidlearn.data import DataLoaderMesh
 from fluidlearn.utils.colormap import Colormap
 from fluidlearn.vis import MeshHighlighter2D, UIpanels
 
@@ -50,7 +50,7 @@ class InterfaceMeshData(EdgeWindow):
         self._controller = Controller()
 
         # Data loading and processing
-        self._data = DataLoaderUnstructured()
+        self._data = DataLoaderMesh()
         self._data.explore_datasets(data_location)
         logger.debug(f"Available datasets: {self._data.available_datasets}")
         self._controller.dataset = next((i for i, x in enumerate(self._data.available_datasets) if x == "test_TGV"), 0)
