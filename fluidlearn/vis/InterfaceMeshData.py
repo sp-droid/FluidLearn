@@ -230,7 +230,7 @@ class Pipeline:
 
 def gui_main(path=Path(r"data/01_raw")):
     figure = fpl.Figure(size=(1920, 1080))
-    figure.canvas.set_title("FluidLearn - Unstructured CFD Visualizer")
+    figure.canvas.set_title("FluidLearn - Mesh Data Interface")
     gui = InterfaceMeshData(
         figure,
         data_location=path
