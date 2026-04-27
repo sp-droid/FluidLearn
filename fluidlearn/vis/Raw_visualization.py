@@ -5,8 +5,7 @@ from typing import Literal
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.spatial import Delaunay, cKDTree # type: ignore
-import matplotlib.pyplot as plt
+from scipy.spatial import Delaunay, cKDTree
 
 # Special
 import fastplotlib as fpl
