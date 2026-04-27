@@ -53,7 +53,7 @@ def raw_data_submenu():
         ).execute()
         
         if choice == "raw":
-            from fluidlearn.vis.Raw_visualization import gui_main
+            from fluidlearn.vis.InterfaceMeshData import gui_main
             gui_main()
             return True
         elif choice == "back":

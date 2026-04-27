@@ -36,7 +36,7 @@ class Controller:
     clip_min: np.float32 = np.float32(0.0)
     clip_max: np.float32 = np.float32(1.0)
 
-class Raw_visualization(EdgeWindow):
+class InterfaceMeshData(EdgeWindow):
     def __init__(self,
             figure,
             size: int=275,
@@ -231,7 +231,7 @@ class Pipeline:
 def gui_main(path=Path(r"data/01_raw")):
     figure = fpl.Figure(size=(1920, 1080))
     figure.canvas.set_title("FluidLearn - Unstructured CFD Visualizer")
-    gui = Raw_visualization(
+    gui = InterfaceMeshData(
         figure,
         data_location=path
     )
