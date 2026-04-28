@@ -4,9 +4,9 @@ import json
 import h5py
 import numpy as np
 
-class DataLoaderUniform:
-    _available_fields = ["p", "Ux", "Uy", "|U|"]
-    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s"}
+class DataLoaderGrid:
+    _available_fields = ["p", "Ux", "Uy", "|U|","Valid mask", "Valid fraction", "SDF"]
+    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Valid fraction": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
     def __init__(self):
         pass
 
@@ -26,12 +26,21 @@ class DataLoaderUniform:
     def load_dataset(self, dataset_index):
         self._dataset_path = self._location / self._available_datasets[dataset_index]
 
-        self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "mesh"], key=lambda x: float(x.stem))
+        self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "constants"], key=lambda x: float(x.stem))
         self._N_cases = len(self._cases)
 
         with open(self._dataset_path / "constants.json", "r") as file:
             self._constants = json.load(file)
         self._fields = self._constants["fields"]
+
+        with h5py.File(self._dataset_path / "constants.h5", "r") as file:
+            self._valid_mask = file["valid_mask"][:].astype(bool)
+            self._valid_fraction = file["valid_fraction"][:].astype(np.float32)
+            self._sdf = file["sdf"][:].astype(np.float32)
+
+        self._N_valid = np.sum(self._valid_mask)
+        self._shape = self._valid_mask.shape
+        self._N_cells = self._shape[0] * self._shape[1]
 
     @property
     def cases(self): return self._cases
@@ -39,6 +48,18 @@ class DataLoaderUniform:
     def N_cases(self): return self._N_cases
     @property
     def constants(self): return self._constants
+    @property
+    def valid_mask(self): return self._valid_mask
+    @property
+    def valid_fraction(self): return self._valid_fraction
+    @property
+    def sdf(self): return self._sdf
+    @property
+    def N_valid(self): return self._N_valid
+    @property
+    def shape(self): return self._shape
+    @property
+    def N_cells(self): return self._N_cells
 
     @property
     def gradient(self): return self._gradient
@@ -49,6 +70,7 @@ class DataLoaderUniform:
     def load_case(self, case, field_index): # field and case specific data
         chosen_case = self._cases[case]
 
+        field = self._available_fields[field_index]
         with h5py.File(chosen_case, "r") as file:
             self._runtime = file.attrs.get("runtime", np.nan) / 60.0
 
@@ -60,21 +82,22 @@ class DataLoaderUniform:
             if field_index < 3:
                 self._data_array = file["fields"][field_index][:].astype(np.float32)
             else:
-                Ux = file["fields"][1][:]
-                Uy = file["fields"][2][:]
-                self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
-    
-        self._shape = self._data_array.shape[1:]
-        self._N_cells = self._shape[0] * self._shape[1]
+                match field:
+                    case "|U|":
+                        Ux = file["fields"][1][:]
+                        Uy = file["fields"][2][:]
+                        self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                    case "Valid mask":
+                        self._data_array = np.repeat(self._valid_mask.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
+                    case "Valid fraction":
+                        self._data_array = np.repeat(self._valid_fraction.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
+                    case "SDF":
+                        self._data_array = np.repeat(self._sdf.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
 
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
 
         self._size_MB = chosen_case.stat().st_size / (1024**2)
 
-    @property
-    def shape(self): return self._shape
-    @property
-    def N_cells(self): return self._N_cells
     @property
     def runtime(self): return self._runtime
     @property
@@ -93,7 +116,7 @@ class DataLoaderUniform:
 class DataLoaderMesh:
     def __init__(self):
         self._available_fields = ["Kinematic pressure", "Kinematic pressure gradient magnitude", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
-        self._field_units = ["m^2/s^2", "m/s^2", "m/s", "m/s", "m/s", "1/s"]
+        self._field_units = {"Kinematic pressure": "m^2/s^2", "Kinematic pressure gradient magnitude": "m/s^2", "Horizontal velocity": "m/s", "Vertical velocity": "m/s", "Velocity magnitude": "m/s", "Vorticity": "1/s"}
 
     @property
     def available_fields(self): return self._available_fields

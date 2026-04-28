@@ -57,9 +57,30 @@ def raw_data_submenu():
             gui_main()
             return True
         elif choice == "back":
-            return False  # Go back, don't exit
+            return False
         elif choice == "exit":
-            return True  # Exit application
+            return True
+        
+def sampled_data_submenu():
+    """Submenu for data options."""
+    while True:
+        choice = inquirer.select(
+            message="\n🎨 Sampled Data Options:",
+            choices=[
+                Choice(value="raw", name="🎨 Visualise"),
+                Choice(value="back", name="🔙 Back to Main Menu"),
+                Choice(value="exit", name="🚪 Exit"),
+            ],
+        ).execute()
+        
+        if choice == "raw":
+            from fluidlearn.vis.interface_grid_data import gui_main
+            gui_main()
+            return True
+        elif choice == "back":
+            return False
+        elif choice == "exit":
+            return True
 
 def data_submenu():
     """Submenu for data options."""
@@ -68,6 +89,7 @@ def data_submenu():
             message="\n🎨 Data Options:",
             choices=[
                 Choice(value="raw", name="📊 Raw Data"),
+                Choice(value="sampled", name="📉 Sampled Data"),
                 Choice(value="back", name="🔙 Back to Main Menu"),
                 Choice(value="exit", name="🚪 Exit"),
             ],
@@ -75,6 +97,9 @@ def data_submenu():
         
         if choice == "raw":
             if raw_data_submenu():  # If True, exit
+                return True
+        elif choice == "sampled":
+            if sampled_data_submenu():  # If True, exit
                 return True
         elif choice == "back":
             return False

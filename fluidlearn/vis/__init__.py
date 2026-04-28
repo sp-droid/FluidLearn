@@ -1,5 +1,5 @@
 # Independent modules
-from fluidlearn.vis.cell_highlighter import MeshCellHighlighter2D
+from fluidlearn.vis.cell_highlighter import GridCellHighlighter2D, MeshCellHighlighter2D
 from fluidlearn.vis.UIpanels import UIpanels
 
 # Dependent modules

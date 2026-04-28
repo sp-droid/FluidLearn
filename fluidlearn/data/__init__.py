@@ -1,1 +1,1 @@
-from fluidlearn.data.dataloader import DataLoaderMesh, DataLoaderUniform
+from fluidlearn.data.dataloader import DataLoaderMesh, DataLoaderGrid

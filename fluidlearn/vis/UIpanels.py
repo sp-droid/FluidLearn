@@ -222,5 +222,5 @@ class UIpanels():
         _highlighter = self._pipeline._highlighter
         imgui.text(f"Highlighted cell:")
         imgui.text(f"\t- ID: {_highlighter.cell}")
-        imgui.text(f"\t- field value: {_highlighter.flowvalue:.3f} {self._data.field_units[self._controller.field]}")
+        imgui.text(f"\t- field value: {_highlighter.flowvalue:.3f} {self._data.field_units[self._data.available_fields[self._controller.field]]}")
         imgui.separator()
