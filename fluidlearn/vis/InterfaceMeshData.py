@@ -15,7 +15,7 @@ from fastplotlib.ui import EdgeWindow
 import fluidlearn as fl
 from fluidlearn.data import DataLoaderMesh
 from fluidlearn.utils.colormap import Colormap, srgb_to_linear
-from fluidlearn.vis import MeshHighlighter2D, UIpanels
+from fluidlearn.vis import MeshCellHighlighter2D, UIpanels
 
 logger = logging.getLogger("fluidlearn")
 
@@ -156,7 +156,7 @@ class Pipeline:
 
         self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2]) # KD tree for fast nearest cell lookup during highlighting
         logger.debug("KDTree built for cell centers.")
-        self._highlighter = MeshHighlighter2D(self._controller, self._plotter, self._data, self._cell_neighbors, self._cell_neighbors_mask, self._cell_kdtree, self._plotter._mesh)
+        self._highlighter = MeshCellHighlighter2D(self._controller, self._plotter, self._data, self._cell_neighbors, self._cell_neighbors_mask, self._cell_kdtree, self._plotter._mesh)
 
         self.update_case()
 

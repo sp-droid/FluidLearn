@@ -1,6 +1,6 @@
 import numpy as np
 
-class MeshHighlighter2D:
+class MeshCellHighlighter2D:
     _highlighted_cell = -1
     _highlighted_cell_original_color = None
     _highlighted_flowvalue = 0.0
