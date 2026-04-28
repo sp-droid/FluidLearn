@@ -5,8 +5,8 @@ import h5py
 import numpy as np
 
 class DataLoaderUniform:
-    _available_fields = ["p", "Ux", "Uy"]
-    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s"}
+    _available_fields = ["p", "Ux", "Uy", "|U|"]
+    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s"}
     def __init__(self):
         pass
 
@@ -57,7 +57,12 @@ class DataLoaderUniform:
             self._time = file['t'][:].astype(np.float32)
             self._N_snapshots = self._time.shape[0]
             
-            self._data_array = file["fields"][field_index][:].astype(np.float32)
+            if field_index < 3:
+                self._data_array = file["fields"][field_index][:].astype(np.float32)
+            else:
+                Ux = file["fields"][1][:]
+                Uy = file["fields"][2][:]
+                self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
     
         self._shape = self._data_array.shape[1:]
         self._N_cells = self._shape[0] * self._shape[1]
