@@ -14,7 +14,7 @@ from fastplotlib.ui import EdgeWindow
 # Local imports
 import fluidlearn as fl
 from fluidlearn.data import DataLoaderMesh
-from fluidlearn.utils.colormap import Colormap
+from fluidlearn.utils.colormap import Colormap, srgb_to_linear
 from fluidlearn.vis import MeshHighlighter2D, UIpanels
 
 logger = logging.getLogger("fluidlearn")
@@ -91,7 +91,7 @@ class Plotter:
 
     def plot_mesh(self):
         # Random colors for visualizing each cell
-        self._random_colors = np.random.rand(self._data.N_cells, 3).astype(np.float32)
+        self._random_colors = srgb_to_linear(np.random.rand(self._data.N_cells, 3).astype(np.float32))
         self._random_colors = np.concatenate([self._random_colors, np.ones((self._data.N_cells, 1), dtype=np.float32)], axis=-1)
 
         if hasattr(self, "_mesh"):
