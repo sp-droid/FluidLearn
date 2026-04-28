@@ -10,6 +10,11 @@ class DataLoaderUniform:
     def __init__(self):
         pass
 
+    @property
+    def available_fields(self): return self._available_fields
+    @property
+    def field_units(self): return self._field_units
+
     def explore_datasets(self, data_location):
         self._location = data_location
         self._available_datasets = [folder.stem for folder in self._location.iterdir() if folder.is_dir()]

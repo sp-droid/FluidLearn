@@ -126,7 +126,9 @@ class Plotter:
         self._figure[0,0].camera.zoom = 1.2
 
     @property
-    def mesh(self): return self._mesh
+    def data(self): return self._mesh.colors
+    @data.setter
+    def data(self, new_data): self._mesh.colors = new_data
     @property
     def random_colors(self): return self._random_colors
 
@@ -152,7 +154,7 @@ class Pipeline:
 
         self._cell_kdtree = cKDTree(self._data.mesh_centers[:, :2]) # KD tree for fast nearest cell lookup during highlighting
         logger.debug("KDTree built for cell centers.")
-        self._highlighter = MeshHighlighter2D(self, self._controller, self._plotter)
+        self._highlighter = MeshHighlighter2D(self._controller, self._plotter, self._data, self._cell_neighbors, self._cell_neighbors_mask, self._cell_kdtree, self._plotter._mesh)
 
         self.update_case()
 
@@ -194,10 +196,10 @@ class Pipeline:
         data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
 
         if self._cmap.available_cmaps[self._controller.cmap] == "random":
-            self._plotter.mesh.colors = self._plotter.random_colors
+            self._plotter.data = self._plotter.random_colors
         else:
             normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
-            self._plotter.mesh.colors = self._cmap.lut[normalized]
+            self._plotter.data = self._cmap.lut[normalized]
 
         self._time = self._data.time[self._controller.snapshot]
         self._controller.precomputed = False
@@ -216,7 +218,7 @@ class Pipeline:
 
     def _fast_load_snapshot(self):
         if self._cmap.available_cmaps[self._controller.cmap] == "random": return
-        self._plotter.mesh.colors = self._fullcase[self._controller.snapshot]
+        self._plotter.data = self._fullcase[self._controller.snapshot]
         self._time = self._data.time[self._controller.snapshot]
 
     def _define_cmap(self): # Define colormap and its lookup table

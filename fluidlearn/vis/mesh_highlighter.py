@@ -1,39 +1,37 @@
 import numpy as np
 
 class MeshHighlighter2D:
-    def __init__(self, parent, controller, plotter):
-        self._parent = parent
+    _highlighted_cell = -1
+    _highlighted_cell_original_color = None
+    _highlighted_flowvalue = 0.0
+    _highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
+
+    def __init__(self, controller, plotter, data, cell_neighbors, cell_neighbors_mask, cell_kdtree, mesh_object):
         self._controller = controller
         self._plotter = plotter
+        self._data = data
 
         # Static parts
-        self._figure = self._plotter.figure
-        self._mesh = self._plotter.mesh
-        self._cell_neighbors = parent._cell_neighbors
-        self._cell_neighbors_mask = parent._cell_neighbors_mask
-        self._cell_kdtree = parent._cell_kdtree
+        self._cell_neighbors = cell_neighbors
+        self._cell_neighbors_mask = cell_neighbors_mask
+        self._cell_kdtree = cell_kdtree
 
-        self._highlighted_cell = -1
-        self._highlighted_cell_original_color = None
-        self._highlighted_flowvalue = 0.0
-        self._highlight_color = np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32)
-
-        self._mesh.add_event_handler(self.on_pointer_move, "pointer_move")
-        self._mesh.add_event_handler(self.on_pointer_leave, "pointer_leave")
+        mesh_object.add_event_handler(self.on_pointer_move, "pointer_move")
+        mesh_object.add_event_handler(self.on_pointer_leave, "pointer_leave")
 
     def on_pointer_leave(self, event):
         if self._highlighted_cell != -1:
-            self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
+            self._plotter.data[self._highlighted_cell] = self._highlighted_cell_original_color
             for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
                 if self._cell_neighbors_mask[self._highlighted_cell, i]:
-                    self._mesh.colors[neighbor][3] = 1.0
-            self._mesh.colors.buffer.update_full()
+                    self._plotter.data[neighbor][3] = 1.0
+            self._plotter.data.buffer.update_full()
             self._highlighted_cell = -1
             self._highlighted_flowvalue = 0.0
 
     def on_pointer_move(self, event):
         # event.position is in WORLD coordinates
-        data_pos = self._figure[0,0].map_screen_to_world(event)
+        data_pos = self._plotter.figure[0,0].map_screen_to_world(event)
 
         if data_pos is not None:
             x, y, _ = data_pos
@@ -44,21 +42,21 @@ class MeshHighlighter2D:
             
             # Restore
             if self._highlighted_cell != -1:
-                self._mesh.colors[self._highlighted_cell] = self._highlighted_cell_original_color
+                self._plotter.data[self._highlighted_cell] = self._highlighted_cell_original_color
                 for i, neighbor in enumerate(self._cell_neighbors[self._highlighted_cell]):
                     if self._cell_neighbors_mask[self._highlighted_cell, i]:
-                        self._mesh.colors[neighbor][3] = 1.0
+                        self._plotter.data[neighbor][3] = 1.0
 
             # Mark
-            self._highlighted_cell_original_color = self._mesh.colors[cell_index].copy()
+            self._highlighted_cell_original_color = self._plotter.data[cell_index].copy()
             for i, neighbor in enumerate(self._cell_neighbors[cell_index]):
                 if self._cell_neighbors_mask[cell_index, i]:
-                    self._mesh.colors[neighbor][3] = 0.5
+                    self._plotter.data[neighbor][3] = 0.5
 
-            self._mesh.colors[cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._parent._data.data_array[self._parent._controller.snapshot, cell_index]
+            self._plotter.data[cell_index] = self._highlight_color
+            self._highlighted_flowvalue = self._data.data_array[self._controller.snapshot, cell_index]
 
-            self._mesh.colors.buffer.update_full()
+            self._plotter.data.buffer.update_full()
             self._highlighted_cell = cell_index
 
     @property
@@ -68,4 +66,4 @@ class MeshHighlighter2D:
     @property
     def flowvalue(self):
         if self._highlighted_cell == -1: return 0.0
-        return self._parent._data.data_array[self._parent._controller.snapshot, self._highlighted_cell]
+        return self._data.data_array[self._controller.snapshot, self._highlighted_cell]
