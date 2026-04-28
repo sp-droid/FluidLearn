@@ -24,7 +24,7 @@ class Controller:
     dataset: int = 0
     vertex_interpolation: bool = False
     case: int = 0
-    flowfield: int = 4
+    field: int = 4
     snapshot: int = 0
     precomputed: bool = False
 
@@ -157,7 +157,7 @@ class Pipeline:
         self.update_case()
 
     def update_case(self):
-        self._data.load_case(self._controller.case, self._controller.flowfield)
+        self._data.load_case(self._controller.case, self._controller.field)
         self._update_data_range()
         self._load_snapshot()
 

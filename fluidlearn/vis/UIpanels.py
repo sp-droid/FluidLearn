@@ -38,6 +38,13 @@ class UIpanels():
             imgui.text(f"{key}: {value}")
         imgui.separator()
 
+    def UI_grid(self):
+        #### Grid properties
+        imgui.text("Grid")
+        imgui.text(f"Shape: {self._data.shape}")
+        imgui.text(f"Cells: {self._data.N_cells}")
+        imgui.separator()
+
     def UI_mesh(self):
         #### Mesh properties and mesh mode (vertex interpolation or face constant)
         imgui.text("Mesh")
@@ -83,7 +90,7 @@ class UIpanels():
         #### Constant colormap across a case or a single snapshot
         if imgui.button("Colormap Mode: Per Case" if self._controller.percase_cmap else "Colormap Mode: Per Snapshot"):
             self._controller.percase_cmap = not self._controller.percase_cmap
-            self._pipeline.update_mesh()
+            self._pipeline.update_case()
         imgui.same_line()
         #### Logarithmic or linear colormap scale
         if imgui.button("Log scale" if self._controller.cmap_logscale else "Lin. scale"):
@@ -125,12 +132,12 @@ class UIpanels():
 
     def UI_flowdata(self):
         #### Dropdown for variable selection
-        changed_flowfield, self._controller.flowfield = imgui.combo(
-            "Flowfield",
-            self._controller.flowfield,
-            self._data.available_flowfields
+        changed_field, self._controller.field = imgui.combo(
+            "field",
+            self._controller.field,
+            self._data.available_fields
         )
-        if changed_flowfield:
+        if changed_field:
             self._pipeline.update_case()
 
         #### Min-max clipping slider for data
@@ -215,5 +222,5 @@ class UIpanels():
         _highlighter = self._pipeline._highlighter
         imgui.text(f"Highlighted cell:")
         imgui.text(f"\t- ID: {_highlighter.cell}")
-        imgui.text(f"\t- Flowfield value: {_highlighter.flowvalue:.3f} {self._data.flowfield_units[self._controller.flowfield]}")
+        imgui.text(f"\t- field value: {_highlighter.flowvalue:.3f} {self._data.field_units[self._controller.field]}")
         imgui.separator()
