@@ -55,12 +55,12 @@ class Colormap:
         """
         
         if logscale:
-            self._lut = np.array([self(np.log10(i)/(np.log10(N_colors))) for i in range(1, N_colors+1)]).astype(np.float32)
+            self._lut = np.array([self(np.log10(i)/(np.log10(N_colors)))[:3] for i in range(1, N_colors+1)]).astype(np.float32)
         else:
-            self._lut = np.array([self(i/(N_colors-1)) for i in range(N_colors)]).astype(np.float32)
+            self._lut = np.array([self(i/(N_colors-1))[:3] for i in range(N_colors)]).astype(np.float32)
         
         match space:
             case "linear":
-                self._lut[:, :3] = srgb_to_linear(self._lut[:, :3])
+                self._lut = srgb_to_linear(self._lut)
     @property
     def lut(self): return self._lut

@@ -91,7 +91,8 @@ class Plotter:
 
     def plot_mesh(self):
         # Random colors for visualizing each cell
-        self._random_colors = np.random.rand(self._data.N_cells, 4).astype(np.float32)
+        self._random_colors = np.random.rand(self._data.N_cells, 3).astype(np.float32)
+        self._random_colors = np.concatenate([self._random_colors, np.ones((self._data.N_cells, 1), dtype=np.float32)], axis=-1)
 
         if hasattr(self, "_mesh"):
             self._figure[0, 0].remove_graphic(self._mesh)
@@ -128,9 +129,10 @@ class Plotter:
     @property
     def data(self): return self._mesh.colors
     @data.setter
-    def data(self, new_data): self._mesh.colors = new_data
-    @property
-    def random_colors(self): return self._random_colors
+    def data(self, new_data): self._mesh.colors[:, :3] = new_data
+    
+    def random_colors(self):
+        self._mesh.colors = self._random_colors
 
 class Pipeline:
     def __init__(self, _data, _controller, _plotter, _cmap):
@@ -196,7 +198,7 @@ class Pipeline:
         data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
 
         if self._cmap.available_cmaps[self._controller.cmap] == "random":
-            self._plotter.data = self._plotter.random_colors
+            self._plotter.random_colors()
         else:
             normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
             self._plotter.data = self._cmap.lut[normalized]

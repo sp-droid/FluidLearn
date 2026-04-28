@@ -66,7 +66,7 @@ class UIpanels():
         colors = self._cmap.lut[indices]  # colors are already in [0, 1] range
         # Convert to 0-255 range and pack as ABGR
         colors = (colors * 255).astype(np.uint32)
-        self._cbar_packed_texture = (colors[:,3] << 24) | (colors[:,2] << 16) | (colors[:,1] << 8) | colors[:,0]
+        self._cbar_packed_texture = (255 << 24) | (colors[:,2] << 16) | (colors[:,1] << 8) | colors[:,0]
 
     def UI_cmap(self):
         #### Dropdown for cmap selection
