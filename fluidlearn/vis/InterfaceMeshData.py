@@ -209,7 +209,7 @@ class Pipeline:
     def _precompute_fast_load_snapshot(self):
         if self._cmap.available_cmaps[self._controller.cmap] == "random": return
         if self._controller.precomputed: return
-        self._fullcase = np.empty((self._data.N_snapshots, self._data.N_cells, 4), dtype=np.float32)
+        self._fullcase = np.empty((self._data.N_snapshots, self._data.N_cells, 3), dtype=np.float32)
         for j in range(self._data.N_snapshots):
             data_array = self._data.data_array[j]
             data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
