@@ -72,7 +72,6 @@ class InterfaceGridData(EdgeWindow):
         self.sidebar = UIpanels(size=size, controller=self._controller, data=self._data, pipeline=self._pipeline, cmap=self._cmap)
 
     def update(self):
-        pass
         self.sidebar.UI_dataset()
         self.sidebar.UI_grid()
         self.sidebar.UI_cmap()
