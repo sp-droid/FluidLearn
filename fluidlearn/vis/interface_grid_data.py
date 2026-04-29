@@ -101,10 +101,12 @@ class Plotter:
             data=self._random_colors
         )
 
-        # Reset camera to fit the new mesh
-        rotation_quat = (np.cos(np.pi / 4), np.sin(np.pi / 4), 0, 0)
+        # Image orientation correction
+        angle = np.deg2rad(-90)
+        rotation_quat = (np.cos(angle / 2), np.sin(angle / 2), 0, 0)
         self._image.rotation = rotation_quat
-        self._figure[0,0].camera.local.scale_y = -1 # Flip y-axis for correct orientation
+        self._figure[0,0].camera.local.scale_x = -1
+
         self._figure[0,0].camera.show_object(self._image.world_object)
         self._figure[0,0].camera.zoom = 1.2
 
