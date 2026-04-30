@@ -134,7 +134,7 @@ class DataLoaderMesh:
     def load_dataset(self, dataset_index):
         self._dataset_path = self._location / self._available_datasets[dataset_index]
 
-        self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "mesh"], key=lambda x: float(x.stem))
+        self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "constants"], key=lambda x: float(x.stem))
         self._N_cases = len(self._cases)
 
         with open(self._dataset_path / "constants.json", "r") as file:
@@ -148,7 +148,7 @@ class DataLoaderMesh:
     def constants(self): return self._constants
 
     def load_mesh(self):
-        with h5py.File(self._dataset_path / "mesh.h5", "r") as file:
+        with h5py.File(self._dataset_path / "constants.h5", "r") as file:
             self._mesh_centers = file["centroids"][:].astype(np.float32)
             self._mesh_vertices = file["vertices"][:].astype(np.float32)
             self._mesh_indices = file["indices"][:].astype(np.uint32)
