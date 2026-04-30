@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from . import cfdml
 from . import cli
 from . import data
 from . import utils
