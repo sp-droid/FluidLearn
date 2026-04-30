@@ -28,7 +28,7 @@ class GridCellHighlighter2D:
         data_pos = self._plotter.figure[0,0].map_screen_to_world(event)
 
         if data_pos is not None:
-            x, y, _ = data_pos
+            x, y, _ = -data_pos
 
             # Get closest cell to pointer position using prebuilt cKDTree
             cell_index = np.floor([x+0.5, y+0.5]).astype(int)  
