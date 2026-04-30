@@ -165,18 +165,17 @@ class UIpanels():
 
     def UI_case(self):
         #### Chosen case info and selection
-        
-        if imgui.button("Load case"):
-            self._pipeline.update_case()
-        imgui.same_line()
-        # imgui.set_next_item_width(150)
-        _, self._controller.case = imgui.slider_int(
+        imgui.text(f"Case: {self._controller.case} / {self._data.N_cases-1}")
+        imgui.set_next_item_width(self._max_width)
+        changed_case, self._controller.case = imgui.slider_int(
             "##case",
             self._controller.case,
             0,
             self._data.N_cases - 1
         )
-        imgui.text(f"Case: {self._controller.case} / {self._data.N_cases-1}")
+        if imgui.is_item_deactivated():
+            self._pipeline.update_case()
+        
         imgui.text(f"Size (MB): {self._data.size_MB:.1f}")
         imgui.text(f"Runtime (min): {(self._data.runtime):.2f}")
         imgui.text(f"Reynolds number: {self._data.Re}")
@@ -186,13 +185,14 @@ class UIpanels():
     def UI_snapshot(self):
         #### Snapshot slider
         imgui.text(f"Snapshot (t={self._pipeline._time:.5f} s)")
+        imgui.set_next_item_width(self._max_width)
         changed_snapshot, self._controller.snapshot = imgui.slider_int(
             "##snapshot",
             self._controller.snapshot,
             0,
             self._data.N_snapshots - 1
         )
-        if changed_snapshot:
+        if imgui.is_item_deactivated():
             if not self._controller.percase_cmap: self._pipeline._update_data_range() # Update colormap range if in per-snapshot mode
             self._pipeline._load_snapshot()
 
