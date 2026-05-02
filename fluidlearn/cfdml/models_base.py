@@ -11,7 +11,7 @@ class BaseRegressionModel(nn.Module):
         super().__init__()
         
         self.loss = loss()
-        self.loss_no_reduction = loss(reduction="none")
+        self.loss_unreduced = loss(reduction="none")
         self.device = device
 
     # Return more information about the model
@@ -21,7 +21,7 @@ class BaseRegressionModel(nn.Module):
     
     # Summary method to display model architecture
     def summary(self, input_data):
-        print(summary(self, input_data=(input_data,)))
+        print(summary(self, input_data=(self.X_to_device(input_data, self.device),)))
 
     # Convert input data to the appropriate device regardless of the dimension
     @staticmethod
@@ -108,7 +108,7 @@ class BaseRegressionModel(nn.Module):
                 X, y = self.X_to_device(X, self.device), y.to(self.device)
                 pred = self(X)
                 if reduced_error: val_loss += self.loss(pred, y).item()
-                else: val_loss += self.loss_no_reduction(pred, y).cpu().numpy()
+                else: val_loss += self.loss_unreduced(pred, y).cpu().numpy()
         val_loss /= len(val_dataloader)
         return val_loss
 
@@ -160,7 +160,7 @@ class BaseRegressionModel(nn.Module):
                 
                 fields = pred
                 if reduced_error:losses.append(self.loss(pred, y_snap).item())
-                else: losses.append(self.loss_no_reduction(pred, y_snap).cpu().numpy())
+                else: losses.append(self.loss_unreduced(pred, y_snap).cpu().numpy())
                 if return_predictions: predictions_snaps.append(pred.cpu())
 
         if return_predictions: return losses, predictions_snaps
