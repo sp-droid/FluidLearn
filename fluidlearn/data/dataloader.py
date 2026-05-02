@@ -5,8 +5,8 @@ import h5py
 import numpy as np
 
 class DataLoaderGrid:
-    _available_fields = ["p", "Ux", "Uy", "|U|","Valid mask", "Valid fraction", "SDF"]
-    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Valid fraction": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
+    _available_fields = ["p", "Ux", "Uy", "|U|","Valid mask", "Validity", "SDF"]
+    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Validity": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
     def __init__(self):
         pass
 
@@ -34,12 +34,12 @@ class DataLoaderGrid:
         self._fields = self._constants["fields"]
 
         with h5py.File(self._dataset_path / "constants.h5", "r") as file:
-            self._valid_mask = file["valid_mask"][:].astype(bool)
-            self._valid_fraction = file["valid_fraction"][:].astype(np.float32)
+            self._validity = file["validity"][:].astype(np.float32)
             self._sdf = file["sdf"][:].astype(np.float32)
 
+        self._valid_mask = self._validity > 0
         self._N_valid = np.sum(self._valid_mask)
-        self._shape = self._valid_mask.shape
+        self._shape = self._validity.shape
         self._N_cells = self._shape[0] * self._shape[1]
 
     @property
@@ -51,7 +51,7 @@ class DataLoaderGrid:
     @property
     def valid_mask(self): return self._valid_mask
     @property
-    def valid_fraction(self): return self._valid_fraction
+    def validity(self): return self._validity
     @property
     def sdf(self): return self._sdf
     @property
@@ -89,8 +89,8 @@ class DataLoaderGrid:
                         self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
                     case "Valid mask":
                         self._data_array = np.repeat(self._valid_mask.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
-                    case "Valid fraction":
-                        self._data_array = np.repeat(self._valid_fraction.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
+                    case "Validity":
+                        self._data_array = np.repeat(self._validity.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
                     case "SDF":
                         self._data_array = np.repeat(self._sdf.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
 

@@ -92,7 +92,7 @@ class Plotter:
     def plot_image(self):
         # Random colors for visualizing each cell
         self._random_colors = np.random.rand(self._data.shape[0], self._data.shape[1], 3).astype(np.float32)
-        self._random_colors = np.concatenate([self._random_colors, self._data.valid_fraction[:,:,np.newaxis]], axis=-1)
+        self._random_colors = np.concatenate([self._random_colors, self._data.validity[:,:,np.newaxis]], axis=-1)
 
         if hasattr(self, "_image"):
             self._figure[0, 0].remove_graphic(self._image)
