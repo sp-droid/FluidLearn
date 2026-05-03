@@ -176,7 +176,8 @@ class Pipeline:
         if self._cmap.available_cmaps[self._controller.cmap] == "random":
             self._plotter.random_colors()
         else:
-            normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
+            if self._controller.clip_min == self._controller.clip_max: normalized = np.zeros_like(data_array, dtype=np.uint32)
+            else: normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
             self._plotter.data = self._cmap.lut[normalized]
 
         self._time = self._data.time[self._controller.snapshot]
@@ -190,7 +191,8 @@ class Pipeline:
             data_array = self._data.data_array[j][self._data.valid_mask]
             data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
             
-            normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
+            if self._controller.clip_min == self._controller.clip_max: normalized = np.zeros_like(data_array, dtype=np.uint32)
+            else: normalized = ((data_array - self._controller.clip_min) / (self._controller.clip_max - self._controller.clip_min) * (self._cmap.lut.shape[0]-1)).astype(np.uint32)
             self._fullcase[j] = self._cmap.lut[normalized]
         self._controller.precomputed = True
 
