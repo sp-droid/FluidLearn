@@ -23,7 +23,7 @@ logger = logging.getLogger("fluidlearn")
 @dataclass
 class Controller:
     dataset: int = 0
-    case: int = 0
+    case_id: int = 0
     field: int = 3
     snapshot: int = 0
     precomputed: bool = False
@@ -132,7 +132,7 @@ class Pipeline:
         self.update_case()
 
     def update_case(self):
-        self._data.load_case(self._controller.case, self._controller.field)
+        self._data.load_case(self._controller.case_id, self._controller.field)
         self._plotter.plot_image()
         
         self._highlighter = GridCellHighlighter2D(self._controller, self._plotter, self._data, self._plotter._image)

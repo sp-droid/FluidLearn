@@ -31,7 +31,7 @@ class UIpanels():
             self._data.available_datasets
         )
         if changed_dataset:
-            self._controller.case = 0
+            self._controller.case_id = 0
             self._controller.snapshot = 0
             self._pipeline.update_dataset()
         for key, value in self._data.constants.items():
@@ -165,11 +165,11 @@ class UIpanels():
 
     def UI_case(self):
         #### Chosen case info and selection
-        imgui.text(f"Case: {self._controller.case} / {self._data.N_cases-1}")
+        imgui.text(f"Case: {self._controller.case_id} / {self._data.N_cases-1}")
         imgui.set_next_item_width(self._max_width)
-        changed_case, self._controller.case = imgui.slider_int(
+        changed_case, self._controller.case_id = imgui.slider_int(
             "##case",
-            self._controller.case,
+            self._controller.case_id,
             0,
             self._data.N_cases - 1
         )
