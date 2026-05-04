@@ -50,7 +50,7 @@ class BaseRegressionModel(nn.Module):
         val_dataloader,
         epochs,
         optimizer = lambda model: torch.optim.AdamW(model.parameters(), lr=0.1),
-        lr_milestones = [100, 150, 180],
+        lr_milestones = [150, 225, 275],
         epoch_plot_interval = None
     ):
         scaler = torch.amp.GradScaler("cuda") # For mixed precision training, can speed up training on compatible hardware
@@ -90,10 +90,10 @@ class BaseRegressionModel(nn.Module):
 
             scheduler.step()
 
-            # Save best weights
-            if epoch/epochs > 0.75 and val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_weights = {k: v.cpu().clone() for k, v in self.state_dict().items()}
+            # # Save best weights
+            # if epoch/epochs > 0.75 and val_loss < best_val_loss:
+            #     best_val_loss = val_loss
+            #     best_weights = {k: v.cpu().clone() for k, v in self.state_dict().items()}
             
             progress_bar.set_postfix(train_loss=train_loss, val_loss=val_loss)
             
@@ -101,8 +101,8 @@ class BaseRegressionModel(nn.Module):
                 if epoch % epoch_plot_interval == 0 or epoch == epochs - 1:
                     self.fit_plot(epoch, epochs)
         
-        # Load best weights
-        if epochs > 10: self.load_state_dict(best_weights)
+        # # Load best weights
+        # if epochs > 10: self.load_state_dict(best_weights)
 
         return self.history
     
