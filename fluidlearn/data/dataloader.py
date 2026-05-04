@@ -5,8 +5,8 @@ import h5py
 import numpy as np
 
 class DataLoaderGrid:
-    _available_fields = ["p", "Ux", "Uy", "|U|","Valid mask", "Validity", "SDF"]
-    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Validity": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
+    _available_fields = ["p/ρ", "Ux", "Uy", "|U|","Valid mask", "Validity", "SDF"]
+    _field_units = {"p/ρ": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Validity": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
     def __init__(self):
         pass
 
@@ -91,6 +91,8 @@ class DataLoaderGrid:
                         self._data_array = self._validity.astype(np.float32)
                     case "SDF":
                         self._data_array = self._sdf.astype(np.float32)
+                    case _:
+                        raise ValueError(f"Unknown field: {self._field}")
         self._min_value = np.nanmin(self._data_array)
         self._max_value = np.nanmax(self._data_array)
         self._prev_snap = snap
@@ -119,6 +121,8 @@ class DataLoaderGrid:
                             Ux = file["fields"][1][:]
                             Uy = file["fields"][2][:]
                             self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                        case _:
+                            raise ValueError(f"Unknown field: {self._field}")
                 self._min_value = np.nanmin(self._data_array)
                 self._max_value = np.nanmax(self._data_array)
 
@@ -146,8 +150,8 @@ class DataLoaderGrid:
 
 class DataLoaderMesh:
     def __init__(self):
-        self._available_fields = ["Kinematic pressure", "Kinematic pressure gradient magnitude", "Horizontal velocity", "Vertical velocity", "Velocity magnitude", "Vorticity"]
-        self._field_units = {"Kinematic pressure": "m^2/s^2", "Kinematic pressure gradient magnitude": "m/s^2", "Horizontal velocity": "m/s", "Vertical velocity": "m/s", "Velocity magnitude": "m/s", "Vorticity": "1/s"}
+        self._available_fields = ["p/ρ", "|grad(p/ρ)|", "Ux", "Uy", "|U|", "curl(U)|z"]
+        self._field_units = {"p/ρ": "m^2/s^2", "|grad(p/ρ)|": "m/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "curl(U)|z": "1/s"}
 
     @property
     def available_fields(self): return self._available_fields
@@ -214,23 +218,25 @@ class DataLoaderMesh:
     def load_snapshot(self, snap):
         with h5py.File(self._chosen_case, "r") as file:
             match self._field:
-                case "Kinematic pressure":
+                case "p/ρ":
                     self._data_array = file['p'][snap, :].astype(np.float32)
-                case "Kinematic pressure gradient magnitude":
+                case "|grad(p/ρ)|":
                     self._data_array = np.empty((self._N_cells), dtype=np.float32)
                     p_grad = self._gradient(file['p'][snap, :])
                     self._data_array = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
-                case "Horizontal velocity":
+                case "Ux":
                     self._data_array = file['U'][snap, :, 0].astype(np.float32)
-                case "Vertical velocity":
+                case "Uy":
                     self._data_array = file['U'][snap, :, 1].astype(np.float32)
-                case "Velocity magnitude":
+                case "|U|":
                     self._data_array = np.sqrt(file['U'][snap, :, 0]**2 + file['U'][snap, :, 1]**2).astype(np.float32)
-                case "Vorticity":
+                case "curl(U)|z":
                     self._data_array = np.empty((self._N_cells), dtype=np.float32)
                     U_grad = self._gradient(file['U'][snap, :, 0])
                     V_grad = self._gradient(file['U'][snap, :, 1])
                     self._data_array = V_grad[0] - U_grad[1]
+                case _:
+                    raise ValueError(f"Unknown field: {self._field}")
             self._min_value = np.min(self._data_array)
             self._max_value = np.max(self._data_array)
             self._prev_snap = snap
@@ -251,25 +257,27 @@ class DataLoaderMesh:
 
             if self._preload_all:
                 match self._field:
-                    case "Kinematic pressure":
+                    case "p/ρ":
                         self._data_array = file['p'][:, :].astype(np.float32)
-                    case "Kinematic pressure gradient magnitude":
+                    case "|grad(p/ρ)|":
                         self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                         for snap in range(self._N_snapshots):
                             p_grad = self._gradient(file['p'][snap, :])
                             self._data_array[snap] = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
-                    case "Horizontal velocity":
+                    case "Ux":
                         self._data_array = file['U'][:, :, 0].astype(np.float32)
-                    case "Vertical velocity":
+                    case "Uy":
                         self._data_array = file['U'][:, :, 1].astype(np.float32)
-                    case "Velocity magnitude":
+                    case "|U|":
                         self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
-                    case "Vorticity":
+                    case "curl(U)|z":
                         self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                         for snap in range(self._N_snapshots):
                             U_grad = self._gradient(file['U'][snap, :, 0])
                             V_grad = self._gradient(file['U'][snap, :, 1])
                             self._data_array[snap] = V_grad[0] - U_grad[1]
+                    case _:
+                        raise ValueError(f"Unknown field: {self._field}")
                 self._min_value = np.min(self._data_array)
                 self._max_value = np.max(self._data_array)
                 
