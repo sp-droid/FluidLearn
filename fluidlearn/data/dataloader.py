@@ -5,8 +5,8 @@ import h5py
 import numpy as np
 
 class DataLoaderGrid:
-    _available_fields = ["p/ρ", "Ux", "Uy", "|U|","Valid mask", "Validity", "SDF"]
-    _field_units = {"p/ρ": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Validity": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
+    _available_fields = ["p", "Ux", "Uy", "|U|","Valid mask", "Validity", "SDF"]
+    _field_units = {"p": "m^2/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "Valid mask": "[1 = valid]", "Validity": "[1 = fully valid]", "SDF": "[<0 inside, >0 outside]"}
     def __init__(self):
         pass
 
@@ -150,8 +150,8 @@ class DataLoaderGrid:
 
 class DataLoaderMesh:
     def __init__(self):
-        self._available_fields = ["p/ρ", "|grad(p/ρ)|", "Ux", "Uy", "|U|", "curl(U)|z"]
-        self._field_units = {"p/ρ": "m^2/s^2", "|grad(p/ρ)|": "m/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "curl(U)|z": "1/s"}
+        self._available_fields = ["p", "|grad(p)|", "Ux", "Uy", "|U|", "curl(U)|z"]
+        self._field_units = {"p": "m^2/s^2", "|grad(p)|": "m/s^2", "Ux": "m/s", "Uy": "m/s", "|U|": "m/s", "curl(U)|z": "1/s"}
 
     @property
     def available_fields(self): return self._available_fields
@@ -218,9 +218,9 @@ class DataLoaderMesh:
     def load_snapshot(self, snap):
         with h5py.File(self._chosen_case, "r") as file:
             match self._field:
-                case "p/ρ":
+                case "p":
                     self._data_array = file['p'][snap, :].astype(np.float32)
-                case "|grad(p/ρ)|":
+                case "|grad(p)|":
                     self._data_array = np.empty((self._N_cells), dtype=np.float32)
                     p_grad = self._gradient(file['p'][snap, :])
                     self._data_array = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
@@ -257,9 +257,9 @@ class DataLoaderMesh:
 
             if self._preload_all:
                 match self._field:
-                    case "p/ρ":
+                    case "p":
                         self._data_array = file['p'][:, :].astype(np.float32)
-                    case "|grad(p/ρ)|":
+                    case "|grad(p)|":
                         self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                         for snap in range(self._N_snapshots):
                             p_grad = self._gradient(file['p'][snap, :])
