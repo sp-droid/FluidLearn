@@ -21,15 +21,14 @@ class BaseRegressionModel(nn.Module):
     
     # Summary method to display model architecture
     def summary(self, input_data):
-        print(summary(self, input_data=(self.X_to_device(input_data, self.device),)))
+        print(summary(self, input_data=(self._to_device(input_data),)))
 
     # Convert input data to the appropriate device regardless of the dimension
-    @staticmethod
-    def X_to_device(X, device):
+    def _to_device(self, X):
         if isinstance(X, tuple) or isinstance(X, list):
-            return tuple(x.to(device) for x in X)
+            return tuple(x.to(self.device) for x in X)
         else:
-            return X.to(device)
+            return X.to(self.device)
 
     # Plot training and validation loss
     def fit_plot(self, epoch, epochs):
@@ -50,29 +49,36 @@ class BaseRegressionModel(nn.Module):
         train_dataloader,
         val_dataloader,
         epochs,
-        optimizer = lambda model: torch.optim.AdamW(model.parameters(), lr=1e-3),
+        optimizer = lambda model: torch.optim.AdamW(model.parameters(), lr=0.1),
+        lr_milestones = [100, 150, 180],
         epoch_plot_interval = None
     ):
+        scaler = torch.amp.GradScaler("cuda") # For mixed precision training, can speed up training on compatible hardware
         self.optimizer = optimizer(self)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=lr_milestones, gamma=0.1) # lr_t+1 = lr_t * gamma, from https://arxiv.org/pdf/1712.09913
+        
         best_val_loss = float("inf")
         best_weights = None
-
         self.history = {"train_loss": [], "val_loss": []}
         progress_bar = tqdm(range(epochs), desc="Training", unit="epoch")
         for epoch in progress_bar:
             # Training
             self.train()
             train_loss = 0
+
             for batch, (X, y) in enumerate(train_dataloader):
-                X, y = self.X_to_device(X, self.device), y.to(self.device)
+                X, y = self._to_device(X), self._to_device(y)
                 # Zero parameter gradients
                 self.optimizer.zero_grad()
-                # Compute prediction error
-                pred = self(X)
-                loss = self.loss(pred, y)
-                # Backpropagation
-                loss.backward()
-                self.optimizer.step()
+
+                with torch.amp.autocast("cuda"): # Mixed precision context
+                    pred = self(X)
+                    loss = self.loss(pred, y)
+                    scaler.scale(loss).backward()
+                    scaler.step(self.optimizer)
+                    scaler.update()
+                # loss.backward()
+                # self.optimizer.step()
 
                 train_loss += loss.item()
             train_loss /= len(train_dataloader)
@@ -81,6 +87,8 @@ class BaseRegressionModel(nn.Module):
             # Validation
             val_loss = self.validate(val_dataloader)
             self.history["val_loss"].append(val_loss)
+
+            scheduler.step()
 
             # Save best weights
             if epoch/epochs > 0.75 and val_loss < best_val_loss:
@@ -105,7 +113,7 @@ class BaseRegressionModel(nn.Module):
         else: val_loss = np.zeros_like(next(iter(val_dataloader))[1].numpy())
         with torch.no_grad():
             for X, y in val_dataloader:
-                X, y = self.X_to_device(X, self.device), y.to(self.device)
+                X, y = self._to_device(X), self._to_device(y)
                 pred = self(X)
                 if reduced_error: val_loss += self.loss(pred, y).item()
                 else: val_loss += self.loss_unreduced(pred, y).cpu().numpy()
@@ -118,7 +126,7 @@ class BaseRegressionModel(nn.Module):
         predictions = []
         with torch.no_grad():
             for X in test_dataloader:
-                X = self.X_to_device(X, self.device)
+                X = self._to_device(X)
                 pred = self(X)
                 predictions.append(pred.cpu())
         predictions = torch.cat(predictions, dim=0)
@@ -131,7 +139,7 @@ class BaseRegressionModel(nn.Module):
 
         with torch.no_grad():
             X = next(iter(test_dataloader)) # Only the first snapshot is used
-            scalars, fields = self.X_to_device(X, self.device)
+            scalars, fields = self._to_device(X)
 
             progress_bar = tqdm(range(n_snaps), desc="Autoregressive prediction", unit="Snapshot", disable=not progress_bar)
             for _ in progress_bar:
@@ -151,11 +159,11 @@ class BaseRegressionModel(nn.Module):
 
         with torch.no_grad():
             X, _ = next(iter(val_dataloader))
-            scalars, fields = self.X_to_device(X, self.device)
+            scalars, fields = self._to_device(X)
 
             progress_bar = tqdm(val_dataloader, desc="Autoregressive validation", unit="Snapshot", disable=not progress_bar)
             for _, y_snap in progress_bar:
-                X_snap, y_snap = (scalars, fields), y_snap.to(self.device)
+                X_snap, y_snap = (scalars, fields), self._to_device(y_snap)
                 pred = self(X_snap)
                 
                 fields = pred
