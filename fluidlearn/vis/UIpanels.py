@@ -23,6 +23,7 @@ class UIpanels():
         self._prebuild_cbar_texture()
 
     def UI_dataset(self):
+        imgui.begin_disabled(self._is_playing)
         #### Dropdown for dataset selection
         imgui.text("Dataset properties")
         changed_dataset, self._controller.dataset = imgui.combo(
@@ -37,15 +38,19 @@ class UIpanels():
         for key, value in self._data.constants.items():
             imgui.text(f"{key}: {value}")
         imgui.separator()
+        imgui.end_disabled()
 
     def UI_grid(self):
+        imgui.begin_disabled(self._is_playing)
         #### Grid properties
         imgui.text("Grid")
         imgui.text(f"Shape: {self._data.shape}")
         imgui.text(f"Cells: {self._data.N_cells}")
         imgui.separator()
+        imgui.end_disabled()
 
     def UI_mesh(self):
+        imgui.begin_disabled(self._is_playing)
         #### Mesh properties and mesh mode (vertex interpolation or face constant)
         imgui.text("Mesh")
         imgui.text(f"Cells: {self._data.N_cells}")
@@ -54,6 +59,7 @@ class UIpanels():
             self._controller.vertex_interpolation = not self._controller.vertex_interpolation
             self._pipeline.update_mesh()
         imgui.separator()
+        imgui.end_disabled()
 
     def _prebuild_cbar_texture(self):
         """Build colorbar texture once and cache it"""
@@ -69,6 +75,7 @@ class UIpanels():
         self._cbar_packed_texture = (255 << 24) | (colors[:,2] << 16) | (colors[:,1] << 8) | colors[:,0]
 
     def UI_cmap(self):
+        imgui.begin_disabled(self._is_playing)
         #### Dropdown for cmap selection
         imgui.text("Colormap")
         changed_cmap, self._controller.cmap = imgui.combo(
@@ -88,8 +95,8 @@ class UIpanels():
             self._prebuild_cbar_texture()
             self._pipeline._load_snapshot()
         #### Constant colormap across a case or a single snapshot
-        if imgui.button("Colormap Mode: Per Case" if self._controller.percase_cmap else "Colormap Mode: Per Snapshot"):
-            self._controller.percase_cmap = not self._controller.percase_cmap
+        if imgui.button("Colormap Mode: Per Case" if self._controller.cmap_all_snaps else "Colormap Mode: Per Snapshot"):
+            self._controller.cmap_all_snaps = not self._controller.cmap_all_snaps
             self._pipeline.update_case()
         imgui.same_line()
         #### Logarithmic or linear colormap scale
@@ -129,8 +136,10 @@ class UIpanels():
         imgui.same_line(width - max_text_width + 10)
         imgui.text(max_text)
         imgui.separator()
+        imgui.end_disabled()
 
     def UI_flowdata(self):
+        imgui.begin_disabled(self._is_playing)
         #### Dropdown for variable selection
         changed_field, self._controller.field = imgui.combo(
             "field",
@@ -146,8 +155,8 @@ class UIpanels():
         changed_min, self._controller.clip_min = imgui.slider_float(
             "##clip_min",
             self._controller.clip_min,
-            self._pipeline._data_min,
-            self._pipeline._data_max,
+            self._data.min_value,
+            self._data.max_value,
             "Min: %.2f",
         )
         imgui.same_line()
@@ -155,15 +164,17 @@ class UIpanels():
         changed_max, self._controller.clip_max = imgui.slider_float(
             "##clip_max",
             self._controller.clip_max,
-            self._pipeline._data_min,
-            self._pipeline._data_max,
+            self._data.min_value,
+            self._data.max_value,
             "Max: %.2f"
         )
         if changed_min or changed_max:
             self._pipeline._load_snapshot()
         imgui.separator()
+        imgui.end_disabled()
 
     def UI_case(self):
+        imgui.begin_disabled(self._is_playing)
         #### Chosen case info and selection
         imgui.text(f"Case: {self._controller.case_id} / {self._data.N_cases-1}")
         imgui.set_next_item_width(self._max_width)
@@ -181,8 +192,10 @@ class UIpanels():
         imgui.text(f"Reynolds number: {self._data.Re}")
         imgui.text(f"Kinematic viscosity: {self._data.nu:.2e} m^2/s")
         imgui.separator()
+        imgui.end_disabled()
 
     def UI_snapshot(self):
+        imgui.begin_disabled(self._is_playing)
         #### Snapshot slider
         imgui.text(f"Snapshot (t={self._pipeline._time:.5f} s)")
         imgui.set_next_item_width(self._max_width)
@@ -193,16 +206,17 @@ class UIpanels():
             self._data.N_snapshots - 1
         )
         if imgui.is_item_deactivated():
-            if not self._controller.percase_cmap: self._pipeline._update_data_range() # Update colormap range if in per-snapshot mode
+            if not self._controller.cmap_all_snaps: self._pipeline._reset_cmap = True # Update colormap range if in per-snapshot mode
             self._pipeline._load_snapshot()
 
+        imgui.end_disabled()
         #### Play controls
         imgui.text("Playback")
         changed_play, self._is_playing = imgui.checkbox("Play", self._is_playing)
         if changed_play and self._is_playing:
-            if not self._controller.percase_cmap:
-                self._controller.percase_cmap = True # Playback only makes sense if the colormap is consistent across snapshots
-                self._pipeline._update_data_range()
+            if not self._controller.cmap_all_snaps:
+                self._controller.cmap_all_snaps = True # Playback only makes sense if the colormap is consistent across snapshots
+                self._pipeline.update_case()
             self._pipeline._precompute_fast_load_snapshot()
 
         imgui.same_line()

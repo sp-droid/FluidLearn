@@ -28,7 +28,7 @@ class Controller:
     snapshot: int = 0
     precomputed: bool = False
 
-    percase_cmap: bool = True
+    cmap_all_snaps: bool = True
     cmap_logscale: bool = False
     cmap_reverse: bool = False
     cmap: int = 0
@@ -132,13 +132,20 @@ class Pipeline:
         self.update_case()
 
     def update_case(self):
-        self._data.load_case(self._controller.case_id, self._controller.field)
+        logger.debug(f"Loading case {self._controller.case_id} from dataset {self._controller.dataset}...")
+        field = self._data.available_fields[self._controller.field]
+        if field in ["Valid mask", "Validity", "SDF"]: self._controller.cmap_all_snaps = False
+
+        self._data.load_case(
+            case_id = self._controller.case_id,
+            field_index = self._controller.field,
+            preload_all = self._controller.cmap_all_snaps
+        )
         self._plotter.plot_image()
         
         self._highlighter = GridCellHighlighter2D(self._controller, self._plotter, self._data, self._plotter._image)
 
-        self._update_data_range()
-
+        self._reset_cmap = True
         self._load_snapshot()
 
 
@@ -161,16 +168,14 @@ class Pipeline:
         )
 
     def _update_data_range(self):
-        if self._controller.percase_cmap: data_array = self._data.data_array[:,self._data.valid_mask].flatten()
-        else: data_array = self._data.data_array[self._controller.snapshot][self._data.valid_mask]
-
-        self._data_min = np.min(data_array)
-        self._controller.clip_min = self._data_min 
-        self._data_max = np.max(data_array)
-        self._controller.clip_max = self._data_max
+        logger.debug(f"Updating data range for colormap: min={self._data.min_value}, max={self._data.max_value}")
+        self._controller.clip_min = self._data.min_value
+        self._controller.clip_max = self._data.max_value
+        self._reset_cmap = False
 
     def _load_snapshot(self):
-        data_array = self._data.data_array[self._controller.snapshot][self._data.valid_mask]
+        data_array = self._data(self._controller.snapshot)[self._data.valid_mask]
+        if self._reset_cmap: self._update_data_range()
         data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
 
         if self._cmap.available_cmaps[self._controller.cmap] == "random":
@@ -184,11 +189,12 @@ class Pipeline:
         self._controller.precomputed = False
 
     def _precompute_fast_load_snapshot(self):
-        if self._cmap.available_cmaps[self._controller.cmap] == "random": return
-        if self._controller.precomputed: return
+        if self._cmap.available_cmaps[self._controller.cmap] == "random" or self._controller.precomputed: return
+        logger.debug("Precomputing snapshots for fast loading...")
+
         self._fullcase = np.empty((self._data.N_snapshots, self._data.N_valid, 3), dtype=np.float32)
         for j in range(self._data.N_snapshots):
-            data_array = self._data.data_array[j][self._data.valid_mask]
+            data_array = self._data(j)[self._data.valid_mask]
             data_array = np.clip(data_array, self._controller.clip_min, self._controller.clip_max)
             
             if self._controller.clip_min == self._controller.clip_max: normalized = np.zeros_like(data_array, dtype=np.uint32)

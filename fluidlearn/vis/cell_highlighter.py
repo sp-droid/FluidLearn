@@ -41,7 +41,7 @@ class GridCellHighlighter2D:
             self._highlighted_cell_original_color = self._plotter.data[*cell_index].copy()
 
             self._plotter.data[*cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._data.data_array[self._controller.snapshot, *cell_index]
+            self._highlighted_flowvalue = self._data(self._controller.snapshot)[*cell_index]
 
             self._highlighted_cell = cell_index
             self._highlighting = True
@@ -53,7 +53,7 @@ class GridCellHighlighter2D:
     @property
     def flowvalue(self):
         if not self._highlighting: return 0.0
-        return self._data.data_array[self._controller.snapshot, *self._highlighted_cell]
+        return self._data(self._controller.snapshot)[*self._highlighted_cell]
 
 class MeshCellHighlighter2D:
     _highlighting = False
@@ -111,7 +111,7 @@ class MeshCellHighlighter2D:
                     self._plotter.data[neighbor][3] = 0.5
 
             self._plotter.data[cell_index] = self._highlight_color
-            self._highlighted_flowvalue = self._data.data_array[self._controller.snapshot, cell_index]
+            self._highlighted_flowvalue = self._data(self._controller.snapshot)[cell_index]
 
             self._plotter.data.buffer.update_full()
             self._highlighted_cell = cell_index
@@ -124,4 +124,4 @@ class MeshCellHighlighter2D:
     @property
     def flowvalue(self):
         if not self._highlighting: return 0.0
-        return self._data.data_array[self._controller.snapshot, self._highlighted_cell]
+        return self._data(self._controller.snapshot)[self._highlighted_cell]

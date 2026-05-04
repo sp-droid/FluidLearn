@@ -67,11 +67,42 @@ class DataLoaderGrid:
     def gradient(self, function):
         self._gradient = function
 
-    def load_case(self, case, field_index): # field and case specific data
-        chosen_case = self._cases[case]
+    def __call__(self, snap):
+        if self._preload_all: return self._data_array[snap]
+        else:
+            if self._prev_snap != snap:
+                self.load_snapshot(snap)
+            return self._data_array
+        
+    def load_snapshot(self, snap):
+        field = self._available_fields[self._field_index]
+        with h5py.File(self._chosen_case, "r") as file:
+            if self._field_index < 3:
+                self._data_array = file["fields"][self._field_index][snap].astype(np.float32)
+            else:
+                match field:
+                    case "|U|":
+                        Ux = file["fields"][1][snap]
+                        Uy = file["fields"][2][snap]
+                        self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                    case "Valid mask":
+                        self._data_array = self._valid_mask.astype(np.float32)
+                    case "Validity":
+                        self._data_array = self._validity.astype(np.float32)
+                    case "SDF":
+                        self._data_array = self._sdf.astype(np.float32)
+        self._min_value = np.nanmin(self._data_array)
+        self._max_value = np.nanmax(self._data_array)
+        self._prev_snap = snap
 
-        field = self._available_fields[field_index]
-        with h5py.File(chosen_case, "r") as file:
+    def load_case(self, case_id, field_index, preload_all): # field and case specific data
+        self._prev_snap = None
+        self._preload_all = preload_all
+        self._chosen_case = self._cases[case_id]
+        self._field_index = field_index
+
+        field = self._available_fields[self._field_index]
+        with h5py.File(self._chosen_case, "r") as file:
             self._runtime = file.attrs.get("runtime", np.nan) / 60.0
 
             self._nu = file.attrs['nu']
@@ -79,25 +110,25 @@ class DataLoaderGrid:
             self._time = file['t'][:].astype(np.float32)
             self._N_snapshots = self._time.shape[0]
             
-            if field_index < 3:
-                self._data_array = file["fields"][field_index][:].astype(np.float32)
-            else:
-                match field:
-                    case "|U|":
-                        Ux = file["fields"][1][:]
-                        Uy = file["fields"][2][:]
-                        self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
-                    case "Valid mask":
-                        self._data_array = np.repeat(self._valid_mask.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
-                    case "Validity":
-                        self._data_array = np.repeat(self._validity.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
-                    case "SDF":
-                        self._data_array = np.repeat(self._sdf.astype(np.float32)[np.newaxis,:,:], self._N_snapshots, axis=0)
+            if self._preload_all:
+                if self._field_index < 3:
+                    self._data_array = file["fields"][self._field_index][:].astype(np.float32)
+                else:
+                    match field:
+                        case "|U|":
+                            Ux = file["fields"][1][:]
+                            Uy = file["fields"][2][:]
+                            self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                self._min_value = np.nanmin(self._data_array)
+                self._max_value = np.nanmax(self._data_array)
 
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
+        self._size_MB = self._chosen_case.stat().st_size / (1024**2)
 
-        self._size_MB = chosen_case.stat().st_size / (1024**2)
-
+    @property
+    def min_value(self): return self._min_value
+    @property
+    def max_value(self): return self._max_value
     @property
     def runtime(self): return self._runtime
     @property
@@ -173,42 +204,83 @@ class DataLoaderMesh:
     def gradient(self, function):
         self._gradient = function
 
-    def load_case(self, case, field_index): # field and case specific data
-        chosen_case = self._cases[case]
-        field = self._available_fields[field_index]   # i.e., "p", "Ux", "Uy", "|U|"...
+    def __call__(self, snap):
+        if self._preload_all: return self._data_array[snap]
+        else:
+            if self._prev_snap != snap:
+                self.load_snapshot(snap)
+            return self._data_array
 
-        with h5py.File(chosen_case, "r") as file:
+    def load_snapshot(self, snap):
+        with h5py.File(self._chosen_case, "r") as file:
+            match self._field:
+                case "Kinematic pressure":
+                    self._data_array = file['p'][snap, :].astype(np.float32)
+                case "Kinematic pressure gradient magnitude":
+                    self._data_array = np.empty((self._N_cells), dtype=np.float32)
+                    p_grad = self._gradient(file['p'][snap, :])
+                    self._data_array = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
+                case "Horizontal velocity":
+                    self._data_array = file['U'][snap, :, 0].astype(np.float32)
+                case "Vertical velocity":
+                    self._data_array = file['U'][snap, :, 1].astype(np.float32)
+                case "Velocity magnitude":
+                    self._data_array = np.sqrt(file['U'][snap, :, 0]**2 + file['U'][snap, :, 1]**2).astype(np.float32)
+                case "Vorticity":
+                    self._data_array = np.empty((self._N_cells), dtype=np.float32)
+                    U_grad = self._gradient(file['U'][snap, :, 0])
+                    V_grad = self._gradient(file['U'][snap, :, 1])
+                    self._data_array = V_grad[0] - U_grad[1]
+            self._min_value = np.min(self._data_array)
+            self._max_value = np.max(self._data_array)
+            self._prev_snap = snap
+
+    def load_case(self, case_id, field_index, preload_all): # field and case specific data
+        self._prev_snap = None
+        self._preload_all = preload_all
+        self._chosen_case = self._cases[case_id]
+        self._field = self._available_fields[field_index]   # i.e., "p", "Ux", "Uy", "|U|"...
+
+        with h5py.File(self._chosen_case, "r") as file:
             self._runtime = file.attrs.get("runtime", np.nan) / 60.0
 
             self._nu = file.attrs['nu']
             
             self._time = file['t'][:].astype(np.float32)
             self._N_snapshots = self._time.shape[0]
-            match field:
-                case "Kinematic pressure":
-                    self._data_array = file['p'][:, :].astype(np.float32)
-                case "Kinematic pressure gradient magnitude":
-                    self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
-                    for snap in range(self._N_snapshots):
-                        p_grad = self._gradient(file['p'][snap, :])
-                        self._data_array[snap] = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
-                case "Horizontal velocity":
-                    self._data_array = file['U'][:, :, 0].astype(np.float32)
-                case "Vertical velocity":
-                    self._data_array = file['U'][:, :, 1].astype(np.float32)
-                case "Velocity magnitude":
-                    self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
-                case "Vorticity":
-                    self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
-                    for snap in range(self._N_snapshots):
-                        U_grad = self._gradient(file['U'][snap, :, 0])
-                        V_grad = self._gradient(file['U'][snap, :, 1])
-                        self._data_array[snap] = V_grad[0] - U_grad[1]
+
+            if self._preload_all:
+                match self._field:
+                    case "Kinematic pressure":
+                        self._data_array = file['p'][:, :].astype(np.float32)
+                    case "Kinematic pressure gradient magnitude":
+                        self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
+                        for snap in range(self._N_snapshots):
+                            p_grad = self._gradient(file['p'][snap, :])
+                            self._data_array[snap] = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
+                    case "Horizontal velocity":
+                        self._data_array = file['U'][:, :, 0].astype(np.float32)
+                    case "Vertical velocity":
+                        self._data_array = file['U'][:, :, 1].astype(np.float32)
+                    case "Velocity magnitude":
+                        self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
+                    case "Vorticity":
+                        self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
+                        for snap in range(self._N_snapshots):
+                            U_grad = self._gradient(file['U'][snap, :, 0])
+                            V_grad = self._gradient(file['U'][snap, :, 1])
+                            self._data_array[snap] = V_grad[0] - U_grad[1]
+                self._min_value = np.min(self._data_array)
+                self._max_value = np.max(self._data_array)
+                
     
         self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
+        self._size_MB = self._chosen_case.stat().st_size / (1024**2)
 
-        self._size_MB = chosen_case.stat().st_size / (1024**2)
-
+    @property
+    def min_value(self): return self._min_value
+    @property
+    def max_value(self): return self._max_value
     @property
     def runtime(self): return self._runtime
     @property
