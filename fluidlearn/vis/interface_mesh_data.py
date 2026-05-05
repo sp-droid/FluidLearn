@@ -142,12 +142,9 @@ class Pipeline:
         self._cmap = _cmap
 
     def update_dataset(self):
+        logger.debug("Loading dataset & mesh...")
         self._data.load_dataset(self._controller.dataset)
-        self.update_mesh()
 
-    def update_mesh(self):
-        logger.debug("Loading mesh...")
-        self._data.load_mesh()
         logger.debug("Mesh loaded. Plotting mesh...")
         self._plotter.plot_mesh()
         logger.debug("Mesh plotted. Precomputing gradient and neighbors...")

@@ -35,8 +35,6 @@ class UIpanels():
             self._controller.case_id = 0
             self._controller.snapshot = 0
             self._pipeline.update_dataset()
-        for key, value in self._data.constants.items():
-            imgui.text(f"{key}: {value}")
         imgui.separator()
         imgui.end_disabled()
 
@@ -57,7 +55,7 @@ class UIpanels():
         imgui.text(f"Vertices: {self._data.N_vertices}")
         if imgui.button("Mesh Mode: Vertex Interpolation" if self._controller.vertex_interpolation else "Mode: Face Constant"):
             self._controller.vertex_interpolation = not self._controller.vertex_interpolation
-            self._pipeline.update_mesh()
+            self._pipeline.update_dataset()
         imgui.separator()
         imgui.end_disabled()
 

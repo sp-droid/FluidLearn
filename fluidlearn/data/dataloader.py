@@ -168,28 +168,27 @@ class DataLoaderMesh:
 
     def load_dataset(self, dataset_index):
         self._dataset_path = self._location / self._available_datasets[dataset_index]
+        self._name = self._dataset_path.stem
 
         self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "constants"], key=lambda x: float(x.stem))
         self._N_cases = len(self._cases)
 
-        with open(self._dataset_path / "constants.json", "r") as file:
-            self._constants = json.load(file)
+        with h5py.File(self._dataset_path / "constants.h5", "r") as file:
+            self._mesh_centers = file["centers"][:].astype(np.float32)
+            self._mesh_vertices = file["vertices"][:].astype(np.float32)
+            self._mesh_indices = file["indices"][:].astype(np.uint32)
+            self._Lc = file.attrs['Lc']
+            self._Uc = file.attrs['Uc']
+
+        self._N_cells = len(self._mesh_centers)
+        self._N_vertices = len(self._mesh_vertices)
 
     @property
     def cases(self): return self._cases
     @property
     def N_cases(self): return self._N_cases
     @property
-    def constants(self): return self._constants
-
-    def load_mesh(self):
-        with h5py.File(self._dataset_path / "constants.h5", "r") as file:
-            self._mesh_centers = file["centroids"][:].astype(np.float32)
-            self._mesh_vertices = file["vertices"][:].astype(np.float32)
-            self._mesh_indices = file["indices"][:].astype(np.uint32)
-
-        self._N_cells = len(self._mesh_centers)
-        self._N_vertices = len(self._mesh_vertices)
+    def name(self): return self._name
 
     @property
     def N_cells(self): return self._N_cells
@@ -225,15 +224,15 @@ class DataLoaderMesh:
                     p_grad = self._gradient(file['p'][snap, :])
                     self._data_array = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
                 case "Ux":
-                    self._data_array = file['U'][snap, :, 0].astype(np.float32)
+                    self._data_array = file['Ux'][snap, :].astype(np.float32)
                 case "Uy":
-                    self._data_array = file['U'][snap, :, 1].astype(np.float32)
+                    self._data_array = file['Uy'][snap, :].astype(np.float32)
                 case "|U|":
-                    self._data_array = np.sqrt(file['U'][snap, :, 0]**2 + file['U'][snap, :, 1]**2).astype(np.float32)
+                    self._data_array = np.sqrt(file['Ux'][snap, :]**2 + file['Uy'][snap, :]**2).astype(np.float32)
                 case "curl(U)|z":
                     self._data_array = np.empty((self._N_cells), dtype=np.float32)
-                    U_grad = self._gradient(file['U'][snap, :, 0])
-                    V_grad = self._gradient(file['U'][snap, :, 1])
+                    U_grad = self._gradient(file['Ux'][snap, :])
+                    V_grad = self._gradient(file['Uy'][snap, :])
                     self._data_array = V_grad[0] - U_grad[1]
                 case _:
                     raise ValueError(f"Unknown field: {self._field}")
@@ -265,16 +264,16 @@ class DataLoaderMesh:
                             p_grad = self._gradient(file['p'][snap, :])
                             self._data_array[snap] = np.sqrt(p_grad[0]**2 + p_grad[1]**2)
                     case "Ux":
-                        self._data_array = file['U'][:, :, 0].astype(np.float32)
+                        self._data_array = file['Ux'][:, :].astype(np.float32)
                     case "Uy":
-                        self._data_array = file['U'][:, :, 1].astype(np.float32)
+                        self._data_array = file['Uy'][:, :].astype(np.float32)
                     case "|U|":
-                        self._data_array = np.sqrt(file['U'][:, :, 0]**2 + file['U'][:, :, 1]**2).astype(np.float32)
+                        self._data_array = np.sqrt(file['Ux'][:, :]**2 + file['Uy'][:, :]**2).astype(np.float32)
                     case "curl(U)|z":
                         self._data_array = np.empty((self._N_snapshots, self._N_cells), dtype=np.float32)
                         for snap in range(self._N_snapshots):
-                            U_grad = self._gradient(file['U'][snap, :, 0])
-                            V_grad = self._gradient(file['U'][snap, :, 1])
+                            U_grad = self._gradient(file['Ux'][snap, :])
+                            V_grad = self._gradient(file['Uy'][snap, :])
                             self._data_array[snap] = V_grad[0] - U_grad[1]
                     case _:
                         raise ValueError(f"Unknown field: {self._field}")
@@ -282,7 +281,7 @@ class DataLoaderMesh:
                 self._max_value = np.max(self._data_array)
                 
     
-        self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
+        self._Re = self._Uc * self._Lc / self._nu
         self._size_MB = self._chosen_case.stat().st_size / (1024**2)
 
     @property
