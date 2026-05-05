@@ -3,5 +3,4 @@
 !/test_TGV/
 !/test_TGV/0.h5
 !/test_TGV/1.h5
-!/test_TGV/mesh.h5
-!/test_TGV/constants.json
+!/test_TGV/constants.h5
