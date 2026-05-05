@@ -25,17 +25,16 @@ class DataLoaderGrid:
 
     def load_dataset(self, dataset_index):
         self._dataset_path = self._location / self._available_datasets[dataset_index]
+        self._name = self._dataset_path.stem
 
         self._cases = sorted([file for file in self._dataset_path.iterdir() if file.suffix == ".h5" and file.stem != "constants"], key=lambda x: float(x.stem))
         self._N_cases = len(self._cases)
 
-        with open(self._dataset_path / "constants.json", "r") as file:
-            self._constants = json.load(file)
-        self._fields = self._constants["fields"]
-
         with h5py.File(self._dataset_path / "constants.h5", "r") as file:
             self._validity = file["validity"][:].astype(np.float32)
             self._sdf = file["sdf"][:].astype(np.float32)
+            self._Lc = file.attrs['Lc']
+            self._Uc = file.attrs['Uc']
 
         self._valid_mask = self._validity > 0
         self._N_valid = np.sum(self._valid_mask)
@@ -46,8 +45,8 @@ class DataLoaderGrid:
     def cases(self): return self._cases
     @property
     def N_cases(self): return self._N_cases
-    @property
-    def constants(self): return self._constants
+    @property 
+    def name(self): return self._name
     @property
     def valid_mask(self): return self._valid_mask
     @property
@@ -75,24 +74,26 @@ class DataLoaderGrid:
             return self._data_array
         
     def load_snapshot(self, snap):
-        field = self._available_fields[self._field_index]
         with h5py.File(self._chosen_case, "r") as file:
-            if self._field_index < 3:
-                self._data_array = file["fields"][self._field_index][snap].astype(np.float32)
-            else:
-                match field:
-                    case "|U|":
-                        Ux = file["fields"][1][snap]
-                        Uy = file["fields"][2][snap]
-                        self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
-                    case "Valid mask":
-                        self._data_array = self._valid_mask.astype(np.float32)
-                    case "Validity":
-                        self._data_array = self._validity.astype(np.float32)
-                    case "SDF":
-                        self._data_array = self._sdf.astype(np.float32)
-                    case _:
-                        raise ValueError(f"Unknown field: {self._field}")
+            match self._field:
+                case "p":
+                    self._data_array = file['p'][snap].astype(np.float32)
+                case "Ux":
+                    self._data_array = file['Ux'][snap].astype(np.float32)
+                case "Uy":
+                    self._data_array = file['Uy'][snap].astype(np.float32)
+                case "|U|":
+                    Ux = file["Ux"][snap]
+                    Uy = file["Uy"][snap]
+                    self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                case "Valid mask":
+                    self._data_array = self._valid_mask.astype(np.float32)
+                case "Validity":
+                    self._data_array = self._validity.astype(np.float32)
+                case "SDF":
+                    self._data_array = self._sdf.astype(np.float32)
+                case _:
+                    raise ValueError(f"Unknown field: {self._field}")
         self._min_value = np.nanmin(self._data_array)
         self._max_value = np.nanmax(self._data_array)
         self._prev_snap = snap
@@ -101,9 +102,8 @@ class DataLoaderGrid:
         self._prev_snap = None
         self._preload_all = preload_all
         self._chosen_case = self._cases[case_id]
-        self._field_index = field_index
 
-        field = self._available_fields[self._field_index]
+        self._field = self._available_fields[field_index]
         with h5py.File(self._chosen_case, "r") as file:
             self._runtime = file.attrs.get("runtime", np.nan) / 60.0
 
@@ -113,20 +113,23 @@ class DataLoaderGrid:
             self._N_snapshots = self._time.shape[0]
             
             if self._preload_all:
-                if self._field_index < 3:
-                    self._data_array = file["fields"][self._field_index][:].astype(np.float32)
-                else:
-                    match field:
-                        case "|U|":
-                            Ux = file["fields"][1][:]
-                            Uy = file["fields"][2][:]
-                            self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
-                        case _:
-                            raise ValueError(f"Unknown field: {self._field}")
+                match self._field:
+                    case "p":
+                        self._data_array = file['p'].astype(np.float32)
+                    case "Ux":
+                        self._data_array = file['Ux'].astype(np.float32)
+                    case "Uy":
+                        self._data_array = file['Uy'].astype(np.float32)
+                    case "|U|":
+                        Ux = file["Ux"][:]
+                        Uy = file["Uy"][:]
+                        self._data_array = np.sqrt(Ux**2 + Uy**2).astype(np.float32)
+                    case _:
+                        raise ValueError(f"Unknown field: {self._field}")
                 self._min_value = np.nanmin(self._data_array)
                 self._max_value = np.nanmax(self._data_array)
 
-        self._Re = self._constants["Uc"] * self._constants["Lc"] / self._nu
+        self._Re = self._Uc * self._Lc / self._nu
         self._size_MB = self._chosen_case.stat().st_size / (1024**2)
 
     @property
