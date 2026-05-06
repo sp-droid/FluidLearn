@@ -159,11 +159,12 @@ class BaseRegressionModel(nn.Module):
 
         with torch.no_grad():
             X, _ = next(iter(val_dataloader))
-            scalars, fields = self._to_device(X)
+            fields = self._to_device(X[1])
 
             progress_bar = tqdm(val_dataloader, desc="Autoregressive validation", unit="Snapshot", disable=not progress_bar)
-            for _, y_snap in progress_bar:
-                X_snap, y_snap = (scalars, fields), self._to_device(y_snap)
+            for X, y in progress_bar:
+                scalars = self._to_device(X[0])
+                X_snap, y_snap = (scalars, fields), self._to_device(y)
                 pred = self(X_snap)
                 
                 fields = pred
