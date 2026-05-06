@@ -197,38 +197,39 @@ class UNet(BaseRegressionModel):
         super().__init__(loss=loss, device=device)
 
         self.contractingC1 = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU()
         )
-        self.contractingC2 = self.contractingBlock(32)
-        self.contractingC3 = self.contractingBlock(64)
+        self.contractingC2 = self.contractingBlock(16)
+        self.contractingC3 = self.contractingBlock(32)
         
         self.contractingNeck = nn.Sequential(
             nn.MaxPool2d(kernel_size=2, stride=2), # 16x32
-            nn.Conv2d(128, 255, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(255, 255, kernel_size=3, stride=1, padding=1),
-            nn.ReLU()
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            # nn.Dropout2d(p=0.5)
         )
-        # Scalars feature map injection +1
+        # Scalars feature map injection +2
         self.expandingNeck = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(130, 64, kernel_size=2, stride=2),
             nn.ReLU()
         )
 
         # Skip connection x2
-        self.expandingE3 = self.expandingBlock(256)
+        self.expandingE3 = self.expandingBlock(128)
         # Skip connection x2
-        self.expandingE2 = self.expandingBlock(128)
+        self.expandingE2 = self.expandingBlock(64)
         # Skip connection x2
         self.expandingE1 = nn.Sequential(
-            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(32, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 3, kernel_size=1, stride=1, padding=0)  # Output layer
+            nn.Conv2d(16, 3, kernel_size=1, stride=1, padding=0)  # Output layer
         )
 
     @staticmethod
@@ -260,12 +261,13 @@ class UNet(BaseRegressionModel):
         C3 = self.contractingC3(C2)
         
         neck = self.contractingNeck(C3)
-        scalar_map = x0D.view(-1, 1, 1, 1).expand(-1, 1, neck.shape[2], neck.shape[3])
+        scalar_map = x0D[:, :, None, None].expand(-1, -1, neck.shape[2], neck.shape[3])
+
         neck = torch.cat([neck, scalar_map], dim=1)
         neck = self.expandingNeck(neck)
 
         E3 = self.expandingE3(torch.cat([C3, neck], dim=1))
         E2 = self.expandingE2(torch.cat([C2, E3], dim=1))
         E1 = self.expandingE1(torch.cat([C1, E2], dim=1))
-        y = E1.view(-1, 3, x2D.shape[2], x2D.shape[3])
+        y = E1.view(-1, x2D.shape[1], x2D.shape[2], x2D.shape[3])
         return y
